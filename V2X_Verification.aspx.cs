@@ -1,10 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
 //using System.IO.Compression;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web;
@@ -16,12 +22,25 @@ using Microsoft.Azure; // Namespace for Azure Configuration Manager
 using Microsoft.WindowsAzure.Storage; // Namespace for Storage Client Library
 using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
+using RestSharp;
 
 namespace Neaera_Website_2018
 {
+    public class SpeedLimit
+    {
+        public int speed { get; set; }
+        public string name { get; set; }
+
+        public SpeedLimit(int speed_val, string name_val)
+        {
+            speed = speed_val;
+            name = name_val;
+        }
+    }
 
     public partial class V2X_Verification : System.Web.UI.Page
     {
+        configurationObject jsonConfig;
         protected void Page_Load(object sender, EventArgs e)
         {
             if (!IsPostBack)
@@ -29,7 +48,16 @@ namespace Neaera_Website_2018
                 //VerificationButton.Visible = false;
                 fillConfigurationFiles();
             }
-
+            if (!ClientScript.IsStartupScriptRegistered("googleMapScript"))
+            {
+                // Register Startup Script for Google Maps API
+                string key = ConfigurationManager.AppSettings["GoogleMapsAPIKey"];
+                string api_url = "https://maps.googleapis.com/maps/api/js?key=" + key; //&callback=initMap  + "&libraries=places"
+                string myScript = "<script type=\"text/javascript\" src=\"" + api_url + "\"> </script>";
+                //string myScript = "&lt;script type=\"text/javascript\" src=\""+ ConfigurationManager.AppSettings["localhost"] + "\"&gt;&lt;/script&gt;";
+                //this.Page.ClientScript.RegisterStartupScript(typeof(Page), "googleMapScript", myScript, true);
+                Page.ClientScript.RegisterClientScriptInclude("googleMapScript", api_url);
+            }
         }
         protected void VisualizeButton_Click(object sender, EventArgs e)
         {
@@ -81,6 +109,7 @@ namespace Neaera_Website_2018
                         fs.Flush();
                     }
                 }
+
                 createVisualizer();
 
                 loadGeoJsonVis();
@@ -90,6 +119,33 @@ namespace Neaera_Website_2018
                 this.hdnParam.Value = "There was an error loading the requested visualization. " + ex.Message.ToString();
                 this.msgtype.Value = "Error";
                 Page.ClientScript.RegisterStartupScript(this.GetType(), "CallMyFunction", "showContent();", true);
+            }
+        }
+
+        public void createSpeedLimitSigns(List<SpeedLimit> speedlimits)
+        {
+            foreach (SpeedLimit item in speedlimits)
+            {
+                //Load the Image to be written on.
+                Bitmap bitMapImage = new Bitmap(Server.MapPath("~/Icons/speed_limit_blank.jpg"));
+                Graphics graphicImage = Graphics.FromImage(bitMapImage);
+
+                //Smooth graphics is nice.
+                graphicImage.SmoothingMode = SmoothingMode.AntiAlias;
+
+                //Write your text.
+                graphicImage.DrawString(item.speed.ToString(), new Font("Highway Gothic", 84, FontStyle.Bold), SystemBrushes.WindowText, new Point(0, 150));
+
+                //Bitmap original = (Bitmap)Image.FromFile("DSC_0002.jpg");
+                Bitmap resized = new Bitmap(bitMapImage, new Size(bitMapImage.Width / 7, bitMapImage.Height / 7));
+                resized.Save(Server.MapPath("~/Icons/speed_limit_" + item.name + ".jpg"), ImageFormat.Jpeg);
+
+                //bitMapImage.Save(Server.MapPath("~/Icons/speed_limit_" + item.name + ".jpg"), ImageFormat.Jpeg);
+
+                //Clean house.
+                graphicImage.Dispose();
+                bitMapImage.Dispose();
+                resized.Dispose();
             }
         }
 
@@ -125,7 +181,91 @@ namespace Neaera_Website_2018
             List<string> blobNamesUper = uperList.OfType<CloudBlockBlob>().Where(b => b.Name.Contains(id)).Select(b => b.Name.Replace("rsm-uperfiles/", "")).ToList();
             foreach (string name in blobNamesUper) files.Add(new string[] { "rsm-uperfiles/" + name, "rsm-uper/" + name });
 
+            string path = Server.MapPath("~/Unzipped Files/wzdx.geojson");
+            string data = File.ReadAllText(path);
+            int startIndex = data.IndexOf("\"metadata\": ") + 12;
+            int endIndex = data.IndexOf(",\r\n    \"version\":", startIndex);
+            string subStr = data.Substring(startIndex, endIndex - startIndex);
+            string data_wo_metadata = data.Replace(subStr, "\"\"");
+
             CloudBlobContainer publishedContainer = blobClient.GetContainerReference("publishedworkzones");
+            Dictionary<int, string> postDict = new Dictionary<int, string>
+            {
+                {200, "Success"},
+                {400, "Bad Request"},
+                {401, "Unauthorized"},
+                {409, "A document already exists with the same feed_info_id"},
+                {500, "Server Error"},
+            };
+            Dictionary<int, string> putDict = new Dictionary<int, string>
+            {
+                {204, "Success"},
+                {400, "Bad Request"},
+                {401, "Unauthorized"},
+                {403, "The corresponding Road Event Feed couldn't be updated as it isn't owned by the user making the request"},
+                {504, "Unable to find a Road Event Feed with the provided feed_info_id"},
+            };
+            if (publishedContainer.GetBlockBlobReference(files[0][1]).Exists())
+            {
+                int response = WebRequest(data_wo_metadata, "PUT");
+                if (response == 204)
+                {
+                    // Success!
+                }
+                else if (response == 404)
+                {
+                    // Feed info id does not exist, try POST operation
+                    int secondResponse = WebRequest(data_wo_metadata, "POST");
+                    if (secondResponse != 200)
+                    {
+                        // Failed
+                        this.hdnParam.Value = "Failed to publish WZDx message to SDX. " + postDict[secondResponse];
+                        this.msgtype.Value = "Error";
+                        Page.ClientScript.RegisterStartupScript(this.GetType(), "CallMyFunction", "showContent();", true);
+                        return;
+                    }
+                }
+                else
+                {
+                    // Failed
+                    this.hdnParam.Value = "Failed to publish WZDx message to SDX. " + postDict[response];
+                    this.msgtype.Value = "Error";
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "CallMyFunction", "showContent();", true);
+                    return;
+                }
+
+                archivePublishedFiles(id);
+            }
+            else
+            {
+                int response = WebRequest(data_wo_metadata, "POST");
+                if (response == 200)
+                {
+                    // Success!
+                }
+                else if (response == 409)
+                {
+                    // Feed info id already exists, try PUT operation
+                    int secondResponse = WebRequest(data_wo_metadata, "PUT");
+                    if (secondResponse != 204)
+                    {
+                        // Failed
+                        this.hdnParam.Value = "Failed to publish WZDx message to SDX. " + postDict[secondResponse];
+                        this.msgtype.Value = "Error";
+                        Page.ClientScript.RegisterStartupScript(this.GetType(), "CallMyFunction", "showContent();", true);
+                        return;
+                    }
+                }
+                else
+                {
+                    // Failed
+                    this.hdnParam.Value = "Failed to publish WZDx message to SDX. " + postDict[response];
+                    this.msgtype.Value = "Error";
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "CallMyFunction", "showContent();", true);
+                    return;
+                }
+            }
+
             foreach (string[] file in files)
             {
                 CloudBlockBlob blob_source = container.GetBlockBlobReference(file[0]);
@@ -143,7 +283,78 @@ namespace Neaera_Website_2018
             this.hdnParam.Value = "Your work zone has been successfully published";
             this.msgtype.Value = "Success";
             Page.ClientScript.RegisterStartupScript(this.GetType(), "CallMyFunction", "showContent();", true);
+            fillConfigurationFiles();
         }
+
+        private int WebRequest(string data, string type)
+        {
+            if (type == "POST")
+            {
+                var client = new RestClient("https://sdxbeta-service.trihydro.com/api/wzdx");
+                client.Timeout = -1;
+                var request = new RestRequest(Method.POST);
+                request.AddHeader("apikey", ConfigurationManager.AppSettings["triHydroApiKey"]);
+                request.AddHeader("Content-Type", "application/json");
+                request.AddParameter("application/json", data, ParameterType.RequestBody);
+                IRestResponse response = client.Execute(request);
+                HttpStatusCode statusCode = response.StatusCode;
+                int numericStatusCode = (int)statusCode;
+                return numericStatusCode;
+            }
+            else if (type == "PUT")
+            {
+                int startIndex = data.IndexOf("\"feed_info_id\": \"") + 17;
+                int endIndex = data.IndexOf("\"", startIndex);
+                string feed_info_id = data.Substring(startIndex, endIndex - startIndex);
+
+                var client = new RestClient("https://sdxbeta-service.trihydro.com/api/wzdx/" + feed_info_id);
+                client.Timeout = -1;
+                var request = new RestRequest(Method.PUT);
+                request.AddHeader("apikey", ConfigurationManager.AppSettings["triHydroApiKey"]);
+                request.AddHeader("Content-Type", "application/json");
+                request.AddParameter("application/json", data, ParameterType.RequestBody);
+                IRestResponse response = client.Execute(request);
+                HttpStatusCode statusCode = response.StatusCode;
+                int numericStatusCode = (int)statusCode;
+                return numericStatusCode;
+            }
+            else return 0;
+        }
+
+        public void archivePublishedFiles(string id)
+        {
+            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(ConfigurationManager.ConnectionStrings["StorageConnectionString"].ConnectionString);
+            CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
+            CloudBlobContainer publishedContainer = blobClient.GetContainerReference("publishedworkzones");
+            CloudBlobContainer archivedContainer = blobClient.GetContainerReference("archivedworkzones");
+
+            string timestamp = DateTime.Now.ToString("MMddyyyy-hhmmss");
+            string begin = "Archived-" + timestamp + "--";
+            List<string[]> files = new List<string[]>();
+            string configFile = "config--" + id + ".json"; //config--test-road--2019-11-8--2019-11-10.json
+            files.Add(new string[] { "config/" + configFile, "config/" + begin + configFile });
+            string geojsonFile = "wzdx--" + id + ".geojson";
+            files.Add(new string[] { "wzdx/" + geojsonFile, "wzdx/" + begin + geojsonFile });
+
+            List<string> xmlFiles = new List<string>();
+            var xmlList = publishedContainer.ListBlobs("rsm-xml/");
+            List<string> blobNamesXml = xmlList.OfType<CloudBlockBlob>().Where(b => b.Name.Contains(id)).Select(b => b.Name.Replace("rsm-xml/", "")).ToList();
+            foreach (string name in blobNamesXml) files.Add(new string[] { "rsm-xml/" + name, "rsm-xml/" + begin + name });
+
+            List<string> uperFiles = new List<string>();
+            var uperList = publishedContainer.ListBlobs("rsm-uper/");
+            List<string> blobNamesUper = uperList.OfType<CloudBlockBlob>().Where(b => b.Name.Contains(id)).Select(b => b.Name.Replace("rsm-uper/", "")).ToList();
+            foreach (string name in blobNamesUper) files.Add(new string[] { "rsm-uper/" + name, "rsm-uper/" + begin + name });
+
+            foreach (string[] file in files)
+            {
+                CloudBlockBlob blob_source = publishedContainer.GetBlockBlobReference(file[0]);
+                CloudBlockBlob blob_dest = archivedContainer.GetBlockBlobReference(file[1]);
+                blob_dest.StartCopy(blob_source);
+                blob_source.DeleteAsync();
+            }
+        }
+
         protected void loadGeoJsonVis()
         {
             string[] lines = File.ReadAllLines(Server.MapPath("~/Unzipped Files/wzdx.geojson"));
@@ -296,9 +507,9 @@ namespace Neaera_Website_2018
             //double d = radius * c;
             return d;
         }
-        public double[] insertMapPt(List<double[]> pathPt, int index, int tLanes, double laneWidth, int dL, double[] lcwpStat, double distVec)
+        public double[] insertMapPt(List<double[]> pathPt, int index, int tLanes, double laneWidth, int dL, int[] lcwpStat, double distVec, int[] laneTaperStat)
         {
-            double[] lla_ls_hwp = new double[4 * tLanes + 3];
+            double[] lla_ls_hwp = new double[5 * tLanes + 3];
             //LO/LC (0/1), WP (0/1) status added on 11/13/2017
 
             double bearingPP = pathPt[index][4];
@@ -312,10 +523,11 @@ namespace Neaera_Website_2018
 
                 if (ln == dL)
                 {
-                    lla_ls_hwp[ln * 4 + 0] = latPP;      //lat, lon, alt, lcloStat for the lane
-                    lla_ls_hwp[ln * 4 + 1] = lonPP;
-                    lla_ls_hwp[ln * 4 + 2] = altPP;
-                    lla_ls_hwp[ln * 4 + 3] = lcwpStat[ln];
+                    lla_ls_hwp[ln * 5 + 0] = latPP;      //lat, lon, alt, lcloStat for the lane
+                    lla_ls_hwp[ln * 5 + 1] = lonPP;
+                    lla_ls_hwp[ln * 5 + 2] = altPP;
+                    lla_ls_hwp[ln * 5 + 3] = lcwpStat[ln];
+                    lla_ls_hwp[ln * 5 + 4] = laneTaperStat[ln];
                 }
                 else
                 {
@@ -323,24 +535,24 @@ namespace Neaera_Website_2018
                     if (ln > dL) bearing = bearing + 180;
 
                     double[] ll = getEndPoint(latPP, lonPP, bearing, lW);   //get lat/lon for the point which is laneWidth apart from the data collected lane
-                    lla_ls_hwp[ln * 4 + 0] = Math.Round(ll[0], 8);          //computed lat of the adjacent lane...
-                    lla_ls_hwp[ln * 4 + 1] = Math.Round(ll[1], 8);          //computed lon of the adjacent lane   
-                    lla_ls_hwp[ln * 4 + 2] = pathPt[index][3];
-                    lla_ls_hwp[ln * 4 + 3] = lcwpStat[ln];
+                    lla_ls_hwp[ln * 5 + 0] = Math.Round(ll[0], 8);          //computed lat of the adjacent lane...
+                    lla_ls_hwp[ln * 5 + 1] = Math.Round(ll[1], 8);          //computed lon of the adjacent lane   
+                    lla_ls_hwp[ln * 5 + 2] = pathPt[index][3];
+                    lla_ls_hwp[ln * 5 + 3] = lcwpStat[ln];
+                    lla_ls_hwp[ln * 5 + 4] = laneTaperStat[ln];
                 }
-
                 if (ln == tLanes - 1)
                 {
-                    lla_ls_hwp[ln * 4 + 4] = bearingPP;
-                    lla_ls_hwp[ln * 4 + 5] = lcwpStat[tLanes];
-                    lla_ls_hwp[ln * 4 + 6] = (int)distVec;
+                    lla_ls_hwp[ln * 5 + 5] = bearingPP;
+                    lla_ls_hwp[ln * 5 + 6] = lcwpStat[tLanes];
+                    lla_ls_hwp[ln * 5 + 7] = Math.Round(distVec, 2);
                 }
             }
 
             return lla_ls_hwp.ToArray();
         }
         public (List<double[]>, double[]) getConcisePathPoints(int laneType, List<double[]> pathPt, List<double[]> mapPt, double laneWidth, double lanePad, int refPtIdx, double mapPtDist,
-        List<int[]> laneStat, List<int[]> wpStat, int dataLane, double[] wzMapLen)
+        List<int[]> laneStat, List<int[]> wpStat, int dataLane, double[] wzMapLen, int[] speedList)
         {
 
 
@@ -351,14 +563,24 @@ namespace Neaera_Website_2018
             int tLanes = laneStat[0][0];
 
             int totDataPt = pathPt.Count();
-            double[] lcwpStat = new double[tLanes + 1];
+            int[] lcwpStat = new int[tLanes + 1];
+            int[] laneTaperStat = new int[tLanes + 1]; //0 = no taper, 1 = taper-right, 2 = taper-left, 3=none, 4=either
 
             int dL = dataLane - 1;                              //set lane number starting 0 as the left most lane
-
+            double dataFreq = 10.0;
             double distVec = 0;
             int stopIndex = 0;
             int startIndex = 0;
             double actualError = 0;
+            double distFromLC = 0;
+            int taperingLane = 0;
+            bool incrDistLC = false;
+
+            double taperLength = speedList[0] * (laneWidth + lanePad) * 3.28084;
+            if (speedList[0] <= 40)
+            {
+                taperLength = ((laneWidth + lanePad) * 3.28084) * (Math.Pow(speedList[0], 2)) / 60;
+            }
 
             double ALLOWABLEERROR = .5;
             double SMALLDELTAPHI = 0.01;
@@ -371,7 +593,7 @@ namespace Neaera_Website_2018
                 {
                     for (int j = 0; j < refPtIdx; j++)
                     {
-                        mapPt.Add(insertMapPt(pathPt, j, tLanes, laneWidth, dL, lcwpStat, distVec));
+                        mapPt.Add(insertMapPt(pathPt, j, tLanes, laneWidth, dL, lcwpStat, distVec, laneTaperStat));
                         distVec += pathPt[j][0] / 10;
                         // Rework to use actualChordLength
                         wzMapLen[0] = distVec;
@@ -396,7 +618,7 @@ namespace Neaera_Website_2018
             double[] Pnext = pathPt[i];
             double totalDist = 0;
             double incrementDist = 0;
-            mapPt.Add(insertMapPt(pathPt, i - 2, tLanes, laneWidth, dL, lcwpStat, distVec));
+            mapPt.Add(insertMapPt(pathPt, i - 2, tLanes, laneWidth, dL, lcwpStat, distVec, laneTaperStat));
 
             bool requiredNode = false;
             while (i < stopIndex)
@@ -409,8 +631,75 @@ namespace Neaera_Website_2018
                     {
                         if (laneStat[lnStat][0] == i - 1) //Lane closure start/end found, save point and add to node list
                         {
+                            int ln = laneStat[lnStat][1] - 1;
                             requiredNode = true;
-                            lcwpStat[laneStat[lnStat][1] - 1] = laneStat[lnStat][2];
+                            if (incrDistLC)
+                            { //other lane taper active, end other lane taper
+                                laneTaperStat[taperingLane] = 0;
+                            }
+                            taperingLane = ln;
+                            incrDistLC = true;
+                            distFromLC = 0;
+                            lcwpStat[taperingLane] = laneStat[lnStat][2];
+                            int laneTaperVal = 3;
+                            if (tLanes != 1)
+                            {
+                                if (lcwpStat[ln] == 1) //Lane closure
+                                {
+                                    if (ln == 0 && lcwpStat[1] == 0) //Left lane, lane to right open
+                                    {
+                                        laneTaperVal = 1;
+                                    }
+                                    else if (ln == tLanes - 1 && lcwpStat[tLanes - 2] == 0) //Right lane, lane to left open
+                                    {
+                                        laneTaperVal = 2;
+                                    }
+                                    else if (ln != 0 && ln != tLanes - 1)
+                                    {
+                                        bool leftLaneOpen = false;
+                                        if (lcwpStat[ln - 1] == 0) leftLaneOpen = true;
+
+                                        bool rightLaneOpen = false;
+                                        if (lcwpStat[ln + 1] == 0) rightLaneOpen = true;
+
+                                        if (rightLaneOpen && leftLaneOpen) laneTaperVal = 4;
+                                        else if (leftLaneOpen) laneTaperVal = 2;
+                                        else if (rightLaneOpen) laneTaperVal = 1;
+                                    }
+                                }
+                                else //Lane opening
+                                {
+                                    if (ln == 0 && lcwpStat[1] == 0) //Left lane, lane to right open
+                                    {
+                                        laneTaperVal = 2;
+                                    }
+                                    else if (ln == tLanes - 1 && lcwpStat[tLanes - 2] == 0) //Right lane, lane to left open
+                                    {
+                                        laneTaperVal = 1;
+                                    }
+                                    else if (ln != 0 && ln != tLanes - 1)
+                                    {
+                                        bool leftLaneOpen = false;
+                                        if (lcwpStat[ln - 1] == 0) leftLaneOpen = true;
+
+                                        bool rightLaneOpen = false;
+                                        if (lcwpStat[ln + 1] == 0) rightLaneOpen = true;
+
+                                        if (rightLaneOpen && leftLaneOpen) laneTaperVal = 4;
+                                        else if (leftLaneOpen) laneTaperVal = 1;
+                                        else if (rightLaneOpen) laneTaperVal = 2;
+                                    }
+                                }
+                            }
+                            laneTaperStat[taperingLane] = laneTaperVal;
+                        }
+                        else if (distFromLC >= taperLength)
+                        {
+                            requiredNode = true;
+                            incrDistLC = false;
+                            distFromLC = 0;
+                            laneTaperStat[taperingLane] = 0;
+                            taperingLane = 0;
                         }
                     }
                     for (int wpZone = 0; wpZone < wpStat.Count(); wpZone++)
@@ -467,7 +756,7 @@ namespace Neaera_Website_2018
                 {
                     incrementDist = actualChordLength;
                     totalDist += incrementDist;
-                    mapPt.Add(insertMapPt(pathPt, i - 1, tLanes, laneWidth, dL, lcwpStat, totalDist));
+                    mapPt.Add(insertMapPt(pathPt, i - 1, tLanes, laneWidth, dL, lcwpStat, totalDist, laneTaperStat));
 
                     Pstarting = pathPt[i - 1];
                     Pprevious = pathPt[i];
@@ -486,7 +775,12 @@ namespace Neaera_Website_2018
                 {
                     incrementDist = actualChordLength;
                     totalDist += incrementDist;
-                    mapPt.Add(insertMapPt(pathPt, i - 1, tLanes, laneWidth, dL, lcwpStat, totalDist));
+                    mapPt.Add(insertMapPt(pathPt, i - 1, tLanes, laneWidth, dL, lcwpStat, totalDist, laneTaperStat));
+                }
+
+                if (incrDistLC)
+                {
+                    distFromLC += (pathPt[i - 1][0] * 3.28084) / dataFreq; //In feet
                 }
                 // Step 9
                 // Integrated into step 7
@@ -794,6 +1088,12 @@ namespace Neaera_Website_2018
                 wzConfig.SpeedLimits.WorkersPresentSpeed
             };
 
+            List<SpeedLimit> speedLimits = new List<SpeedLimit>();
+            speedLimits.Add(new SpeedLimit(wzConfig.SpeedLimits.NormalSpeed, "main"));
+            speedLimits.Add(new SpeedLimit(wzConfig.SpeedLimits.ReferencePointSpeed, "wz"));
+            speedLimits.Add(new SpeedLimit(wzConfig.SpeedLimits.WorkersPresentSpeed, "wp"));
+            createSpeedLimitSigns(speedLimits);
+
             int[] c_sc_codes = new int[]
             {
                 wzConfig.CauseCodes.CauseCode,
@@ -826,14 +1126,14 @@ namespace Neaera_Website_2018
             int wzMapPtDist = 200;
             List<double[]> appMapPt = new List<double[]>();
             int laneType = 1; //Approach Region
-            (List<double[]> appMapPtOut, double[] wzMapLenOut) = getConcisePathPoints(laneType, pathPt, appMapPt, laneWidth, lanePadApp, refPtIdx, appMapPtDist, laneStat, wpStat, dataLane, wzMapLen);
+            (List<double[]> appMapPtOut, double[] wzMapLenOut) = getConcisePathPoints(laneType, pathPt, appMapPt, laneWidth, lanePadApp, refPtIdx, appMapPtDist, laneStat, wpStat, dataLane, wzMapLen, speedList);
             //(List<double[]> appMapPtOut, double[] wzMapLenOut) = getLanePt(laneType, pathPt, appMapPt, laneWidth, lanePadApp, refPtIdx, appMapPtDist, laneStat, wpStat, dataLane, wzMapLen);
             appMapPt = appMapPtOut;
             wzMapLen = wzMapLenOut;
 
             List<double[]> wzMapPt = new List<double[]>();
             laneType = 2;
-            (List<double[]> wzMapPtOut, double[] wzMapLenOut_2) = getConcisePathPoints(laneType, pathPt, wzMapPt, laneWidth, lanePadWZ, refPtIdx, wzMapPtDist, laneStat, wpStat, dataLane, wzMapLen);
+            (List<double[]> wzMapPtOut, double[] wzMapLenOut_2) = getConcisePathPoints(laneType, pathPt, wzMapPt, laneWidth, lanePadWZ, refPtIdx, wzMapPtDist, laneStat, wpStat, dataLane, wzMapLen, speedList);
             //(List<double[]> wzMapPtOut, double[] wzMapLenOut_2) = getLanePt(laneType, pathPt, wzMapPt, laneWidth, lanePadWZ, refPtIdx, wzMapPtDist, laneStat, wpStat, dataLane, wzMapLen);
             wzMapPt = wzMapPtOut;
             wzMapLen = wzMapLenOut_2;

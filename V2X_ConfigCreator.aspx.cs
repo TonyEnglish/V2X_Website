@@ -13,12 +13,13 @@ using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using System.Text.RegularExpressions;
 using System.Collections;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System.Runtime.InteropServices;
 using System.Data;
 using System.ComponentModel;
 using System.Net.Mail;
+using System.Net.Http;
+using System.Net.Http.Headers;
 
 namespace Neaera_Website_2018
 {
@@ -34,19 +35,34 @@ namespace Neaera_Website_2018
         string strRequiredfield = "";
         string Typeofconfig = "";
         private ClientScriptManager clientScript;
+        static HttpClient client = new HttpClient();
 
         protected void Page_Load(object sender, EventArgs e)
         {
             clientScript = this.Page.ClientScript;
-            
+            ClientScript.GetPostBackEventReference(this, string.Empty);
 
             if (!IsPostBack)
             {
                 fill_dropdowns();
                 initializefields();
             }
+
+            if (!ClientScript.IsStartupScriptRegistered("googleMapScript"))
+            {
+                // Register Startup Script for Google Maps API
+                string key = ConfigurationManager.AppSettings["GoogleMapsAPIKey"];
+                string api_url = "https://maps.googleapis.com/maps/api/js?key=" + key + "&libraries=places"; //&callback=initMap
+                string myScript = "<script type=\"text/javascript\" src=\"" + api_url + "\"> </script>";
+                //string myScript = "&lt;script type=\"text/javascript\" src=\""+ ConfigurationManager.AppSettings["localhost"] + "\"&gt;&lt;/script&gt;";
+                //this.Page.ClientScript.RegisterStartupScript(typeof(Page), "googleMapScript", myScript, true);
+                Page.ClientScript.RegisterClientScriptInclude("googleMapScript", api_url);
+            }
+
             initcheckboxes();
         }
+
+
         public void initcheckboxes()
         {
             for (int i = 0; i < this.chEventStatus.Items.Count; i++)
@@ -120,8 +136,8 @@ namespace Neaera_Website_2018
             this.txtEndingCrossStreet.Text = "";
             this.txtBeginMilePost.Text = "";
             this.txtEndMilePost.Text = "";
-           // gridTypesOfWork.DataSource = CreateGridData_TypeOfWork();
-           // gridTypesOfWork.DataBind();
+            // gridTypesOfWork.DataSource = CreateGridData_TypeOfWork();
+            // gridTypesOfWork.DataBind();
         }
         public void clearfields()
         {
@@ -225,6 +241,7 @@ namespace Neaera_Website_2018
             fill_atreferencepoint();
             fill_whenworkerspresent();
             fill_numberoflanes();
+            fill_avgvehicledatapath(0);
             fillConfigurationFiles();
             fill_typesofwork();
             fill_restrictiontype();
@@ -304,7 +321,7 @@ namespace Neaera_Website_2018
             //Fill normal speed dropdown 
             this.dd_normalspeed.Items.Clear();
             dd_normalspeed.Items.Add(string.Empty);
-            for (int i = 0; i <= normalspeedmax; i+=5)
+            for (int i = 0; i <= normalspeedmax; i += 5)
             {
                 dd_normalspeed.Items.Add(i.ToString());
             }
@@ -314,7 +331,7 @@ namespace Neaera_Website_2018
             //Fill at reference point dropdown 
             this.dd_AtreferencePoint.Items.Clear();
             dd_AtreferencePoint.Items.Add(string.Empty);
-            for (int i = 0; i <= atrefpointmax; i+=5)
+            for (int i = 0; i <= atrefpointmax; i += 5)
             {
                 dd_AtreferencePoint.Items.Add(i.ToString());
             }
@@ -324,7 +341,7 @@ namespace Neaera_Website_2018
             //Fill when workers are presant dropdown 
             this.dd_WhenWorkersArePresent.Items.Clear();
             dd_WhenWorkersArePresent.Items.Add(string.Empty);
-            for (int i = 0; i <= whenworkerspresentmax; i+=5)
+            for (int i = 0; i <= whenworkerspresentmax; i += 5)
             {
                 dd_WhenWorkersArePresent.Items.Add(i.ToString());
             }
@@ -334,18 +351,33 @@ namespace Neaera_Website_2018
         {
             //Fillnumber of lanes and vehicle path data lane dropdowns 
             this.dd_numberoflanes.Items.Clear();
-            this.dd_avgvehicledatapath.Items.Clear();
+
             ListItem listdditems;
+
             for (int i = 1; i <= numberoflanes; i++)
             {
                 listdditems = new ListItem(i.ToString(), i.ToString());
-                dd_avgvehicledatapath.Items.Add(listdditems);
                 dd_numberoflanes.Items.Add(listdditems);
+
+            }
+            dd_numberoflanes.DataBind();
+        }
+        public void fill_avgvehicledatapath(int maxlanes)
+        {
+            this.dd_avgvehicledatapath.Items.Clear();
+            ListItem listdditems;
+
+            for (int i = 1; i <= numberoflanes; i++)
+            {
+                listdditems = new ListItem(i.ToString(), i.ToString());
+                if (i <= maxlanes)
+                    dd_avgvehicledatapath.Items.Add(listdditems);
+                else
+                    dd_avgvehicledatapath.Items.Add(listdditems);
             }
             dd_avgvehicledatapath.DataBind();
-            dd_numberoflanes.DataBind();
-            //Page.ClientScript.RegisterStartupScript(this.GetType(), "CallMyFunction", "initLaneType();", true);
         }
+
         public void fillobject()
         {
             //Load imported config file
@@ -353,9 +385,15 @@ namespace Neaera_Website_2018
             {
                 txt_workzonedescription.Text = jsonConfig.GeneralInfo.Description;
                 dd_numberoflanes.ClearSelection(); //Clear all values before loading
+                //refill dropdown with max selected in dd_numberoflanes
+                fill_numberoflanes();
+                fill_avgvehicledatapath(int.Parse(jsonConfig.LaneInfo.NumberOfLanes.ToString()));
+                var test2 = dd_numberoflanes;
+                dd_numberoflanes.ClearSelection();
                 dd_numberoflanes.Items.FindByText(jsonConfig.LaneInfo.NumberOfLanes.ToString()).Selected = true;
                 dd_avgvehicledatapath.ClearSelection();
                 dd_avgvehicledatapath.Items.FindByText(jsonConfig.LaneInfo.VehiclePathDataLane.ToString()).Selected = true;
+
                 AvgLaneWidth.Text = jsonConfig.LaneInfo.AverageLaneWidth.ToString();
                 AppLanePadding.Text = jsonConfig.LaneInfo.ApproachLanePadding.ToString();
                 WorkZoneLanePadding.Text = jsonConfig.LaneInfo.WorkzoneLanePadding.ToString();
@@ -370,12 +408,17 @@ namespace Neaera_Website_2018
                 txtCauseCode.Text = jsonConfig.CauseCodes.CauseCode.ToString();
                 txtsubcausecode.Text = jsonConfig.CauseCodes.SubCauseCode.ToString();
 
+
                 // CONVERT TO DATETIME
                 try { this.Calendar_BeginDate.SelectedDate = System.Convert.ToDateTime(jsonConfig.Schedule.StartDate); }
                 catch { this.Calendar_BeginDate.SelectedDate = System.DateTime.Now; }
 
+                TimeBegin.Value = System.Convert.ToDateTime(jsonConfig.Schedule.StartDate).ToLocalTime().ToString("hh:mm:ss");
+
                 try { this.Calendar_enddate.SelectedDate = System.Convert.ToDateTime(jsonConfig.Schedule.EndDate); }
                 catch { this.Calendar_enddate.SelectedDate = System.DateTime.Now; }
+
+                TimeEnd.Value = System.Convert.ToDateTime(jsonConfig.Schedule.EndDate).ToLocalTime().ToString("hh:mm:ss");
 
                 List<string> daysofweek;
                 Dictionary<string, string> days_week = new Dictionary<string, string> {
@@ -455,11 +498,11 @@ namespace Neaera_Website_2018
                 string datafeed_frequency_update = "";
                 this.txtDataFeedFrequencyMethod.Text = jsonConfig.metadata.datafeed_frequency_update.ToString();
 
-                
+
                 string wz_location = "";
 
                 //WZ_LOCATION_METHODS
-                wz_location =jsonConfig.metadata.wz_location_method.ToString();
+                wz_location = jsonConfig.metadata.wz_location_method.ToString();
                 if (wz_location != "") this.ck_WZLocationmethod.Items.FindByValue(wz_location).Selected = true;
 
                 this.txtContactEmail.Text = jsonConfig.metadata.contact_email.ToString();
@@ -521,7 +564,9 @@ namespace Neaera_Website_2018
         public void createobject()
         {
             jsonConfig = new configurationObject();
-            jsonConfig.DateCreated = System.DateTime.Now.ToShortDateString();
+            jsonConfig.DateCreated = System.DateTime.Now.ToUniversalTime().ToString("yyyy-MM-ddThh:mm:ssZ");
+
+            jsonConfig.FeedInfoID = Guid.NewGuid().ToString(); //Bad logic. In the future, only change feedInfoID when work zone changes
 
             jsonConfig.GeneralInfo = new GENERALINFO();
             jsonConfig.GeneralInfo.Description = txt_workzonedescription.Text;
@@ -639,7 +684,7 @@ namespace Neaera_Website_2018
             jsonConfig.SpeedLimits.NormalSpeed = System.Convert.ToInt32(dd_normalspeed.SelectedValue);
             jsonConfig.SpeedLimits.ReferencePointSpeed = System.Convert.ToInt32(dd_AtreferencePoint.SelectedValue);
             jsonConfig.SpeedLimits.WorkersPresentSpeed = System.Convert.ToInt32(dd_WhenWorkersArePresent.SelectedValue);
-            
+
 
             jsonConfig.CauseCodes = new CAUSE();
             jsonConfig.CauseCodes.CauseCode = System.Convert.ToInt32(txtCauseCode.Text);
@@ -870,7 +915,7 @@ namespace Neaera_Website_2018
             {
                 MailAddress m = new MailAddress(this.txtContactEmail.Text.ToString());
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 if (strRequiredfield.Length != 0)
                     strRequiredfield = strRequiredfield + " and enter a valid contact email address ";
@@ -882,39 +927,25 @@ namespace Neaera_Website_2018
 
             return isvalid;
         }
-        protected void btnSave_Click1(object sender, EventArgs e)
+
+
+        protected void btnSaveConfirm_Click1(object sender, EventArgs e)
         {
-            string test = this.myHiddenoutputlist.Value.ToString();
-
-            //bool fieldsvalid = false;
-
-            //fieldsvalid = validaterequiredfields();
-
-            //if (fieldsvalid == false)
-            //{
-            //    this.hdnParam.Value = strRequiredfield;
-            //    this.msgtype.Value = "Error";
-            //    Page.ClientScript.RegisterStartupScript(this.GetType(), "CallMyFunction", "showContent();", true);
-            //    return;
-            //}
-
-
-            //check to see if file exists in azure already...if so prompt user to continue or cancel
-
-
-            bool fileexists = checkblobfileexsits("inprogressconfigfiles");
-            if (fileexists)
+            string confirmanswer = this.hidden_confirmoverwrite.Value.ToString();
+            if (confirmanswer == "true")
             {
-                //ScriptManager.RegisterClientScriptBlock(this, this.GetType(), "key", "function Confirm(){window.confirm('aaa?');$get('Text1').value='bbb';}", true);
-                ScriptManager.RegisterStartupScript(this, typeof(string), "Message", "if(confirm('The File already exists on Azure .Do you want Overwrite?')){location.replace('default.aspx?" + "FileNAME" + "');}else{location.replace('CampaignTrack.aspx');}", true);
-                ClientScript.RegisterStartupScript(typeof(Page), "Confirm", "<script type='text/javascript'>callConfirm();</script>");  
-                string confirmValue = Request.Form["confirm_value"];  
-                return;
+                SaveConfigFile();
             }
-            //ScriptManager.RegisterStartupScript(this, typeof(string), "Message", "if(confirm('The File already exists on Azure .Do you want Overwrite?')){location.replace('default.aspx?" + "FileNAME" + "');}else{location.replace('CampaignTrack.aspx');}", true);
-            //ClientScript.RegisterStartupScript(typeof(Page), "Confirm", "<script type='text/javascript'>callConfirm();</script>");  
-            //string confirmValue = Request.Form["confirm_value"];  
+            else if (confirmanswer == "false")
+            {
+                this.hdnParam.Value = "Your file has NOT been overwritten and has not been saved";
+                this.msgtype.Value = "Info";
+            }
 
+
+        }
+        public void SaveConfigFile()
+        {
             try
             {
                 jsonConfig = new configurationObject();
@@ -945,27 +976,21 @@ namespace Neaera_Website_2018
                 this.btnDownloadFile_tab1.Enabled = false;
                 this.btnDownloadFile_tab1.ForeColor = System.Drawing.Color.Gray;
             }
-            //Code to call if you need user input
-            //string confirmValue = Request.Form["confirm_value"];
-            //if (confirmValue == "Yes")
-            //{
-            //    jsonConfig = new configObj_json();
-            //    createobject();
-            //    createconfigfile();
-            //    fillConfigurationFiles();
-            //    this.btnDownloadFile.Enabled = true;
-            //    this.hdnParam.Value = "Your configuration file has been successfully saved.";
-            //    this.msgtype.Value = "Success";
-            //    Page.ClientScript.RegisterStartupScript(this.GetType(), "CallMyFunction", "showContent();", true);
+        }
 
-            //}
-            //else
-            //{
-            //    this.hdnParam.Value = "Your configuration file has NOT been saved.";
-            //    this.msgtype.Value = "Info";
-            //    Page.ClientScript.RegisterStartupScript(this.GetType(), "CallMyFunction", "showContent();", true);
-            //    this.btnDownloadFile.Enabled = false;
-            //}
+
+        protected void btnSave_Click1(object sender, EventArgs e)
+        {
+            string test = this.myHiddenoutputlist.Value.ToString();
+            bool fileexists = checkblobfileexsits("inprogressconfigfiles");
+            if (fileexists)
+            {
+                this.hdnParam.Value = "This is my message";
+                ScriptManager.RegisterStartupScript(this, this.GetType(), "script", "var value = confirm('A file name of: " + txtFilepath_configSave.Text + " already exists.  Are you sure you want to overwrite the existing file?'); myconfirmbox(value);", true);
+                return;
+            }
+            else
+                SaveConfigFile();
 
         }
 
@@ -991,7 +1016,7 @@ namespace Neaera_Website_2018
                 {
                     selectedfile = this.txtFilepath_configSave.Text.ToString();
                     //Check in Inprogress and published
-                    selectedfile_type= checkFolder(selectedfile);
+                    selectedfile_type = checkFolder(selectedfile);
                     if (selectedfile_type == "inprogressconfigfiles")
                         downloadlocal(selectedfile, "inprogressconfigfiles");
                     else if (selectedfile_type == "publishedconfigfiles")
@@ -1034,7 +1059,7 @@ namespace Neaera_Website_2018
                 //        downloadlocal(selectedfile, "publishedconfigfiles");
                 //    else
                 //    {
-                        
+
                 //        this.hdnParam.Value = "Please select a file to download from the list of published or unpublished files.";
                 //        this.msgtype.Value = "Error";
                 //        Page.ClientScript.RegisterStartupScript(this.GetType(), "CallMyFunction", "showContent();", true);
@@ -1311,18 +1336,18 @@ namespace Neaera_Website_2018
             this.btnDownloadFile_tab1.ForeColor = System.Drawing.Color.Gray;
             this.txtConfigType.Text = "Config status: Config status : Empty File (not saved or loaded configuration file).";
         }
-        
+
 
         protected void btnAddWorkType_Click(object sender, EventArgs e)
         {
             //add item to list
             //this.lsttypesofwork.Items.Add(new ListItem(this.ddTypeOfWork.SelectedValue.ToString(), this.chkArchetururalChange.Checked.ToString()));
             String columns = "{1, -55}{1, -35}";
-           // lsttypesofwork.Items.Add(String.Format(columns, "Filename", "Selected DateModified"));
+            // lsttypesofwork.Items.Add(String.Format(columns, "Filename", "Selected DateModified"));
             //lsttypesofwork.Items.Add(String.Format(columns, this.ddTypeOfWork.SelectedItem.Text.ToString(), this.chkArchetururalChange.Checked.ToString()));
         }
 
-        
+
     }
 
 

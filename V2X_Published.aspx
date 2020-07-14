@@ -139,13 +139,13 @@
                 <div class="hero-intro">
                     <div class="grid-row">
                         <div class="tablet:grid-col-8">
-                            <h2 align="left">V2X TMC Data Collection Website</h2>
+                            <h2 align="left">V2X Enabled Work Zone Data Collection</h2>
                         </div>
                     </div>
                     <div class="grid-row">
                         <div class="tablet:grid-col-8">
                             <p align="left">
-                                Work Zone Data Exchange - Get Work Zone Data
+                                Get Work Zone Data
                             </p>
                         </div>
                     </div>
@@ -229,16 +229,18 @@
                 var boulder = { lat: 40.93977, lng: -105.185182 };
                 map = new google.maps.Map(
                     document.getElementById('map'), {
-                        zoom: 4,
-                        center: boulder,
-                        mapTypeId: google.maps.MapTypeId.HYBRID
-                    }
+                    zoom: 4,
+                    center: boulder,
+                    mapTypeId: google.maps.MapTypeId.HYBRID
+                }
                 );
                 center_display = document.getElementById('info-box')
                 map.controls[google.maps.ControlPosition.TOP_CENTER].push(center_display);
                 checkboxClicked();
                 //initEvents();
             }
+            initMap()
+
             function loadGeoJsonString(geoString) {
                 var geojson = JSON.parse(geoString);
                 map.data.addGeoJson(geojson);
@@ -380,9 +382,9 @@
                 }
             }
         </script>
-        <script
-            src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB6C5lgal0QWlYqp9AS6LHtAqTG9fH9GPA&callback=initMap">
-        </script>
+        <%--<script
+            src="https://maps.googleapis.com/maps/api/js?key=api-key-here&callback=initMap">
+        </script>--%>
     </form>
 </body>
 </html>

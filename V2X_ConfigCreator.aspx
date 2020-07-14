@@ -76,7 +76,11 @@
             right: 15px;
             bottom: 8px;
         }
-
+         .nextBtnAddInfo {
+            position: absolute;
+            right: 70px;
+            bottom: 8px;
+        }
         .prevBtn {
             position: absolute;
             left: 15px;
@@ -208,7 +212,18 @@
             $("#tabs").tabs();
         });
     </script>
-
+     <script type="text/javascript">
+         function myconfirmbox(value) {
+             var val = value;
+             if (val == true) {
+                 document.getElementById("hidden_confirmoverwrite").value = "true";
+             }
+             else if (val == false) {
+                 document.getElementById("hidden_confirmoverwrite").value = "false";
+             }
+             document.getElementById('<%= btnSaveConfirm.ClientID %>').click();
+         }
+     </script>
    
 
     <style>
@@ -266,13 +281,13 @@
                 <div class="hero-intro">
                     <div class="grid-row">
                         <div class="tablet:grid-col-8" style="box-sizing: content-box;">
-                            <h2 align="left">V2X TMC Data Collection Website </h2>
+                            <h2 align="left">V2X Enabled Work Zone Data Collection </h2>
                         </div>
                     </div>
                     <div class="grid-row">
                         <div class="tablet:grid-col-8">
                             <p align="left">
-                                Work Zone Data Exchange - Enter Information
+                               Configuration Creator
                             </p>
                         </div>
                     </div>
@@ -598,7 +613,7 @@
                                         </div>
                                         <div class="column_tab3">
                                             <label for="field1"><span style="padding-bottom: 10px; margin-left: -20px;">End Date Accuracy</span></label>
-                                            <asp:CheckBoxList ID="chkEndDateAccuracy" runat="server" RepeatDirection="Vertical" TextAlign="Right" CellSpacing="20" Width="500" RepeatLayout="Table" CssClass="checkboxlist_nowrap">
+                                            <asp:CheckBoxList ID="chkEndDateAccuracy" runat="server" RepeatDirection="Vertical" TextAlign="Right" CellSpacing="20" RepeatLayout="Table" CssClass="checkboxlist_nowrap">
                                                 <asp:ListItem onclick="MutExChkList(this);" Selected="False">Estimated</asp:ListItem>
                                                 <asp:ListItem onclick="MutExChkList(this);" Selected="False">Verified</asp:ListItem>
                                             </asp:CheckBoxList>
@@ -631,6 +646,7 @@
                                     </div>
                                     <div class="navBtnContianer">
                                         <input id="Previous_Tab4" type="button" value="< Previous" class="btn btn-primary prevBtn" onclick="doTab('Previous')" />
+                                         <input id="Next_tab4" type="button" value="Next >" class="btn btn-primary nextBtnAddInfo" style="float: right;" onclick="doTab('Next')" />
                                     </div>
                                 </div>
                             </div>
@@ -660,6 +676,8 @@
                                                 <div hidden="hidden">
                                                     <asp:DropDownList ID="ddRestrictionTypes" runat="server"></asp:DropDownList>
                                                     <asp:DropDownList ID="ddRestrictionUnits" runat="server"></asp:DropDownList>
+                                                    <asp:DropDownList ID="ddNumberofLanes" runat="server"></asp:DropDownList>
+                                                    
                                                 </div>
 
                                             </div>
@@ -689,6 +707,7 @@
 
                                     <div class="navBtnContianer">
                                         <input id="Previous_Tab5" type="button" value="< Previous" class="btn btn-primary prevBtn" onclick="doTab('Previous')" />
+                                        <input id="Next_tab" type="button" value="Next >" class="btn btn-primary nextBtnAddInfo" style="float: right;" onclick="doTab('Next')" />
                                     </div>
                                 </div>
                             </div>
@@ -736,7 +755,9 @@
                         <div style="margin-left: 30%;">
                             <input type="hidden" id="hdnParam" runat="server" clientidmode="Static" value="This is my message" />
                             <input type="hidden" id="msgtype" runat="server" clientidmode="Static" />
+                            <input type="hidden" id="hidden_confirmoverwrite" runat="server" clientidmode="Static" />
                             <asp:Button ID="btnSave" runat="server" Text="Save" OnClick="btnSave_Click1" ForeColor="black" OnClientClick="javascript:check_requiredfields()" />
+                            <asp:Button ID="btnSaveConfirm" runat="server" Text="Save"  OnClick="btnSaveConfirm_Click1" ForeColor="black" style="display:none"   />
                             <asp:Button ID="btnPublishFile" runat="server" Text="Publish" OnClick="btnPublishFile_Click" ForeColor="Gray" />
                             <asp:Button ID="btnDownloadFile" runat="server" Text="DownloadFile" Enabled="false" OnClick="btnDownloadFile_Click" ForeColor="Gray" />
                             <asp:Button ID="btnClearFields" runat="server" Text="Clear Fields" Enabled="true" OnClick="btnClearFields_Click" ForeColor="White" />
@@ -842,6 +863,7 @@
                     initAutocomplete();
                     //updateMarkers();
                 }
+                initMap()
                 function updateMarkers() {
                     startEndMarkers = []
                     start_lat = document.getElementById('<%=start_lat_hidden.ClientID%>').value
@@ -930,12 +952,51 @@
                         center_lon = (parseFloat(start_lng) + parseFloat(end_lng)) / 2
                         centerLocation = new google.maps.LatLng(center_lat, center_lon);
                         map.setCenter(centerLocation);
-                        map.setZoom(10)
+                        //map.setZoom(10)
+                        var start_location = new google.maps.LatLng(parseFloat(start_lat), parseFloat(start_lng));
+                        var end_location = new google.maps.LatLng(parseFloat(end_lat), parseFloat(end_lng));
+
+                        var $mapDiv = $('#map');
+                        var mapDim = { height: $mapDiv.height(), width: $mapDiv.width() };
+                        var bounds = new google.maps.LatLngBounds();
+                        bounds.extend(start_location);
+                        bounds.extend(end_location);
+                        zoom = getBoundsZoomLevel(bounds, mapDim)
+                        map.setZoom(zoom)
                     }
                     var strmsg = document.getElementById("hdnParam").value;
                     if (strmsg != "This is my message") showContent();
                     // TODO: Move to location and zoom level for markers
                 }
+
+                function getBoundsZoomLevel(bounds, mapDim) {
+                    var WORLD_DIM = { height: 256, width: 256 };
+                    var ZOOM_MAX = 21;
+
+                    function latRad(lat) {
+                        var sin = Math.sin(lat * Math.PI / 180);
+                        var radX2 = Math.log((1 + sin) / (1 - sin)) / 2;
+                        return Math.max(Math.min(radX2, Math.PI), -Math.PI) / 2;
+                    }
+
+                    function zoom(mapPx, worldPx, fraction) {
+                        return Math.floor(Math.log(mapPx / worldPx / fraction) / Math.LN2);
+                    }
+
+                    var ne = bounds.getNorthEast();
+                    var sw = bounds.getSouthWest();
+
+                    var latFraction = (latRad(ne.lat()) - latRad(sw.lat())) / Math.PI;
+
+                    var lngDiff = ne.lng() - sw.lng();
+                    var lngFraction = ((lngDiff < 0) ? (lngDiff + 360) : lngDiff) / 360;
+
+                    var latZoom = zoom(mapDim.height, WORLD_DIM.height, latFraction);
+                    var lngZoom = zoom(mapDim.width, WORLD_DIM.width, lngFraction);
+
+                    return Math.min(latZoom, lngZoom, ZOOM_MAX);
+                }
+
                 function initAutocomplete() {
                     //libraries=places&
                     //var map = new google.maps.Map(document.getElementById('map'), {
@@ -1037,9 +1098,9 @@
 * The key parameter will contain your own API key (which is not needed for this tutorial)
 * The callback parameter executes the initMap() function
 -->
-            <script
-                src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB6C5lgal0QWlYqp9AS6LHtAqTG9fH9GPA&libraries=places&callback=initMap">
-            </script>
+            <%--<script
+                src='https://maps.googleapis.com/maps/api/js?key=api-key-here&libraries=places&callback=initMap'>
+            </script>--%>
             <script>
 
 

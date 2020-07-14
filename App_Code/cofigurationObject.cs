@@ -13,6 +13,7 @@ namespace Neaera_Website_2018
         public string DateCreated { get; set; } //only updated when initially created
         // public string DateUpdated { get; set; } //update each time updated
         // public string PublishDate { get; set; } //update each time updated
+        public string FeedInfoID { get; set; }
         public GENERALINFO GeneralInfo { get; set; }
         public List<TYPEOFWORK> TypesOfWork { get; set; }
         public LANEINFO LaneInfo { get; set; }
@@ -33,7 +34,7 @@ namespace Neaera_Website_2018
         public string EndingCrossStreet { get; set; }//ending cross street
         public int BeginningMilePost { get; set; }//int beginning milepost
         public int EndingMilePost { get; set; } //int ending milepost
-        public EVENTSTATUS ? EventStatus { get; set; } //calculated
+        public EVENTSTATUS? EventStatus { get; set; } //calculated
     }
 
     public class LANEINFO
@@ -74,8 +75,8 @@ namespace Neaera_Website_2018
 
     public class TYPEOFWORK
     {
-       public WORKTYPE WorkType { get; set; }
-       public bool Is_Architectural_Change; //** check box y/n
+        public WORKTYPE WorkType { get; set; }
+        public bool Is_Architectural_Change; //** check box y/n
     }
 
     public class SPEEDLIMITS
@@ -152,7 +153,7 @@ namespace Neaera_Website_2018
     public enum DIRECTION
     {
         [Description("northbound")] northbound,
-        [Description("eastbound")] eastbound ,
+        [Description("eastbound")] eastbound,
         [Description("southbound")] southbound,
         [Description("westbound")] westbound
     }
@@ -183,7 +184,7 @@ namespace Neaera_Website_2018
         [Description("reduced-length")] reducedlength,
         [Description("reduced-weight")] reducedweight,
         [Description("axle-load-limit")] axleloadlimit,
-        [Description("gross-weight-limit")]  grossweightlimit,
+        [Description("gross-weight-limit")] grossweightlimit,
         [Description("towing-prohibited")] towingprohibited,
         [Description("permitted-oversize-loads-prohibited")] permittedoversizeloadsprohibitied
     }
@@ -210,14 +211,14 @@ namespace Neaera_Website_2018
         [Description("left-shoulder")] leftshoulder
     }
     [JsonConverter(typeof(CustomStringEnumConverter))]
-    public enum RESTRICTIONUNITS 
+    public enum RESTRICTIONUNITS
     {
         [Description("feet")] feet,
         [Description("inches")] inches,
         [Description("centimeters")] centimeters,
         [Description("pounds")] pounds,
         [Description("tons")] tons,
-        [Description("kilograms")] kilograms 
+        [Description("kilograms")] kilograms
     }
     [JsonConverter(typeof(CustomStringEnumConverter))]
     public enum WZ_LOCATION_METHODS
