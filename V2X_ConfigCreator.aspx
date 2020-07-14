@@ -23,7 +23,7 @@
     <style>
         /* Set the size of the div element that contains the map */
         #map {
-            height: 100%; /* The height is 400 pixels CHANGED FILE 7142020 */
+            height: 100%; /* The height is 400 pixels  no comment */
             width: 100%; /* The width is the width of the web page */
         }
 
