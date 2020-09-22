@@ -1,10 +1,10 @@
-﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="V2x_Home.aspx.cs" Inherits="Neaera_Website_2018.V2x_Home" %>
+<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="V2x_Home.aspx.cs" Inherits="Neaera_Website_2018.V2x_Home" %>
 
 <!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head runat="server">
-    <title>V2X Enabled Work Zone Data Collection</title>
+    <title></title>
      <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
      <link rel="stylesheet" href="assets_v2x/css/uswds.min.css">
      <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
@@ -25,7 +25,7 @@
       <div class="hero-intro">
         <div class="grid-row">
           <div class="tablet:grid-col-8">
-            <h2 align="left">V2X Enabled Work Zone Data Collection </h2>
+            <h2 align="left">V2X TMC Data Collection Website </h2>
           </div>
         </div>
         <div class="grid-row">
@@ -41,7 +41,7 @@
   </div>
         <section id="middle-info">
     <div class="grid-container" style="max-width: 60%;">
-      <h1 class="text-center">V2X Enabled Work Zone Data Collection</h1>
+      <h1 class="text-center">V2X WorkZone Data Exchange</h1>
       <div class="grid-row">
         <%--<div class="grid-col-12 tablet:grid-col-4">
           <a class="link-box" href="RSM_Translator_WZDx.aspx"
