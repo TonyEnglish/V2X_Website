@@ -1,4 +1,4 @@
-﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="V2X_Upload.aspx.cs" Inherits="Neaera_Website_2018.V2X_Upload" %>
+<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="V2X_Upload.aspx.cs" Inherits="Neaera_Website_2018.V2X_Upload" %>
 
 <!DOCTYPE html>
 
@@ -146,11 +146,11 @@
 
         <div class="form-style-2">
             <div class="grid-container">
-                <h1 class="text-center">Work Zone Upload and Visualizer</h1>
+                <h1 class="text-center">Work Zone Data Upload</h1>
                 <div class="form-style-2-heading">Upload File</div>
                 <div id="uploadContainer">
-                    <asp:Label ID="lbl_fileupload" class="upload" runat="server">Please select a zip file to upload</asp:Label>
-                    <asp:FileUpload ID="file_uploadpath" class="upload" ClientIDMode="Static" runat="server" accept=".zip" /><br />
+                    <asp:Label ID="lbl_fileupload" class="upload" runat="server">Please select a path data (CSV) file to upload</asp:Label>
+                    <asp:FileUpload ID="file_uploadpath" class="upload" ClientIDMode="Static" runat="server" accept=".csv" /><br />
                     <div id="wzInfoDiv" class="upload" style="font-size: 15px;">
                         <table>
                             <tr>
