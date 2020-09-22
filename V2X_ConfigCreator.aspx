@@ -1,4 +1,4 @@
-﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="V2X_ConfigCreator.aspx.cs" Inherits="Neaera_Website_2018.V2X_ConfigCreator" %>
+<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="V2X_ConfigCreator.aspx.cs" Inherits="Neaera_Website_2018.V2X_ConfigCreator" %>
 
 <!DOCTYPE html>
 
@@ -23,7 +23,7 @@
     <style>
         /* Set the size of the div element that contains the map */
         #map {
-            height: 100%; /* The height is 400 pixels  no comment */
+            height: 100%; /* The height is 400 pixels */
             width: 100%; /* The width is the width of the web page */
         }
 
@@ -213,16 +213,18 @@
         });
     </script>
      <script type="text/javascript">
-         function myconfirmbox(value) {
-             var val = value;
-             if (val == true) {
-                 document.getElementById("hidden_confirmoverwrite").value = "true";
-             }
-             else if (val == false) {
-                 document.getElementById("hidden_confirmoverwrite").value = "false";
-             }
-             document.getElementById('<%= btnSaveConfirm.ClientID %>').click();
-         }
+        function myconfirmbox(value) {
+            var val = value;
+            if (val == true)
+            { 
+                document.getElementById("hidden_confirmoverwrite").value = "true";
+            }
+            else if (val== false)
+            {
+                document.getElementById("hidden_confirmoverwrite").value = "false";
+            }
+            document.getElementById('<%= btnSaveConfirm.ClientID %>').click();
+        }
      </script>
    
 
@@ -281,13 +283,13 @@
                 <div class="hero-intro">
                     <div class="grid-row">
                         <div class="tablet:grid-col-8" style="box-sizing: content-box;">
-                            <h2 align="left">V2X Enabled Work Zone Data Collection </h2>
+                            <h2 align="left">V2X TMC Data Collection Website </h2>
                         </div>
                     </div>
                     <div class="grid-row">
                         <div class="tablet:grid-col-8">
                             <p align="left">
-                               Configuration Creator
+                                Work Zone Data Exchange - Enter Information
                             </p>
                         </div>
                     </div>
@@ -955,7 +957,7 @@
                         //map.setZoom(10)
                         var start_location = new google.maps.LatLng(parseFloat(start_lat), parseFloat(start_lng));
                         var end_location = new google.maps.LatLng(parseFloat(end_lat), parseFloat(end_lng));
-
+                        
                         var $mapDiv = $('#map');
                         var mapDim = { height: $mapDiv.height(), width: $mapDiv.width() };
                         var bounds = new google.maps.LatLngBounds();
