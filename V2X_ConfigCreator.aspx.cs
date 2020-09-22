@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Globalization;
@@ -18,8 +18,10 @@ using System.Runtime.InteropServices;
 using System.Data;
 using System.ComponentModel;
 using System.Net.Mail;
-using System.Net.Http;
-using System.Net.Http.Headers;
+using RestSharp;
+using System.Net;
+using System.Drawing;
+using Newtonsoft.Json.Linq;
 
 namespace Neaera_Website_2018
 {
@@ -35,7 +37,6 @@ namespace Neaera_Website_2018
         string strRequiredfield = "";
         string Typeofconfig = "";
         private ClientScriptManager clientScript;
-        static HttpClient client = new HttpClient();
 
         protected void Page_Load(object sender, EventArgs e)
         {
@@ -61,8 +62,6 @@ namespace Neaera_Website_2018
 
             initcheckboxes();
         }
-
-
         public void initcheckboxes()
         {
             for (int i = 0; i < this.chEventStatus.Items.Count; i++)
@@ -413,12 +412,12 @@ namespace Neaera_Website_2018
                 try { this.Calendar_BeginDate.SelectedDate = System.Convert.ToDateTime(jsonConfig.Schedule.StartDate); }
                 catch { this.Calendar_BeginDate.SelectedDate = System.DateTime.Now; }
 
-                TimeBegin.Value = System.Convert.ToDateTime(jsonConfig.Schedule.StartDate).ToLocalTime().ToString("hh:mm:ss");
+                TimeBegin.Value = System.Convert.ToDateTime(jsonConfig.Schedule.StartDate).ToLocalTime().ToString("HH:mm:ss");
 
                 try { this.Calendar_enddate.SelectedDate = System.Convert.ToDateTime(jsonConfig.Schedule.EndDate); }
                 catch { this.Calendar_enddate.SelectedDate = System.DateTime.Now; }
 
-                TimeEnd.Value = System.Convert.ToDateTime(jsonConfig.Schedule.EndDate).ToLocalTime().ToString("hh:mm:ss");
+                TimeEnd.Value = System.Convert.ToDateTime(jsonConfig.Schedule.EndDate).ToLocalTime().ToString("HH:mm:ss");
 
                 List<string> daysofweek;
                 Dictionary<string, string> days_week = new Dictionary<string, string> {
@@ -694,12 +693,12 @@ namespace Neaera_Website_2018
             jsonConfig.Schedule = new SCHEDULE();
             DateTime StartDate = this.Calendar_BeginDate.SelectedDate;
             TimeSpan StartTime = TimeSpan.Parse(TimeBegin.Value); //CONVERT TO UTC
-            jsonConfig.Schedule.StartDate = StartDate.Add(StartTime).ToUniversalTime().ToString("yyyy-MM-ddThh:mm:ssZ");
+            jsonConfig.Schedule.StartDate = StartDate.Add(StartTime).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
             foreach (ListItem item in this.chkStartDateAccuracy.Items) if ((item.Selected)) jsonConfig.Schedule.StartDateAccuracy = (STARTDATEACCURACY)System.Enum.Parse(typeof(STARTDATEACCURACY), item.Value.ToString().ToLower());
 
             DateTime EndDate = this.Calendar_enddate.SelectedDate;
             TimeSpan EndTime = TimeSpan.Parse(TimeEnd.Value); //CONVERT TO UTC
-            jsonConfig.Schedule.EndDate = EndDate.Add(EndTime).ToUniversalTime().ToString("yyyy-MM-ddThh:mm:ssZ");
+            jsonConfig.Schedule.EndDate = EndDate.Add(EndTime).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
             foreach (ListItem item in this.chkEndDateAccuracy.Items) if ((item.Selected)) jsonConfig.Schedule.EndDateAccuracy = (ENDDATEACCURACY)System.Enum.Parse(typeof(ENDDATEACCURACY), item.Value.ToString().ToLower());
 
             List<string> wzDaysOfWeek = new List<string>();
@@ -707,15 +706,20 @@ namespace Neaera_Website_2018
             jsonConfig.Schedule.DaysOfWeek = wzDaysOfWeek;
 
 
+            double startLat = System.Convert.ToDouble(start_lat_hidden.Text);
+            double startLon = System.Convert.ToDouble(start_lng_hidden.Text);
+            double endLat = System.Convert.ToDouble(end_lat_hidden.Text);
+            double endLon = System.Convert.ToDouble(end_lng_hidden.Text);
+
             jsonConfig.Location = new LOCATION();
-            jsonConfig.Location.BeginningLocation = new Coordinate();
-            jsonConfig.Location.BeginningLocation.Lat = System.Convert.ToDouble(start_lat_hidden.Text);
-            jsonConfig.Location.BeginningLocation.Lon = System.Convert.ToDouble(start_lng_hidden.Text);
-            jsonConfig.Location.EndingLocation = new Coordinate();
-            jsonConfig.Location.EndingLocation.Lat = System.Convert.ToDouble(end_lat_hidden.Text);
-            jsonConfig.Location.EndingLocation.Lon = System.Convert.ToDouble(end_lng_hidden.Text);
+            jsonConfig.Location.BeginningLocation = new Coordinate(Convert.ToDouble(start_lat_hidden.Text), Convert.ToDouble(start_lng_hidden.Text));
+            jsonConfig.Location.EndingLocation = new Coordinate(Convert.ToDouble(end_lat_hidden.Text), Convert.ToDouble(end_lng_hidden.Text));
             foreach (ListItem item in this.chkBeginningAccuracy.Items) if ((item.Selected)) jsonConfig.Location.BeginningAccuracy = (BEGINNINGACCURACY)System.Enum.Parse(typeof(BEGINNINGACCURACY), item.Value.ToString().ToLower());
             foreach (ListItem item in this.chkEndingAccuracy.Items) if ((item.Selected)) jsonConfig.Location.EndingAccuracy = (ENDINGACCURACY)System.Enum.Parse(typeof(ENDINGACCURACY), item.Value.ToString().ToLower());
+            jsonConfig.ImageInfo = new IMAGEINFO();
+            (jsonConfig.ImageInfo.Zoom, jsonConfig.ImageInfo.Center, jsonConfig.ImageInfo.Markers, jsonConfig.ImageInfo.MapType, jsonConfig.ImageInfo.Height, jsonConfig.ImageInfo.Width, jsonConfig.ImageInfo.Format, jsonConfig.ImageInfo.ImageString) = 
+                getImageString(startLat, startLon, endLat, endLon);
+
 
 
             jsonConfig.metadata = new METADATA();
@@ -728,7 +732,135 @@ namespace Neaera_Website_2018
             jsonConfig.metadata.contact_email = this.txtContactEmail.Text.ToString();
             jsonConfig.metadata.issuing_organization = txtIssuingOrganization.Text;
             updateTableStrings(jsonConfig);
+        }
 
+        public (int, Coordinate, List<Marker>, string, int, int, string, string) getImageString(double startLat, double startLon, double endLat, double endLon)
+        {
+            double centerLat = (startLat + endLat) / 2;
+            double centerLon = (startLon + endLon) / 2;
+            string center = centerLat.ToString() + ',' + centerLon.ToString();
+
+            double north = Math.Max(startLat, endLat);
+            double south = Math.Min(startLat, endLat);
+            double east = Math.Max(startLon, endLon);
+            double west = Math.Min(startLon, endLon);
+            int width = 640;
+            int height = 640;
+            int zoom = calcZoomLevel(north, south, east, west, width, height);
+
+            List<Marker> markers = new List<Marker>();
+            Marker startMarker = new Marker("Start", System.Drawing.Color.Green, new Coordinate(startLat, startLon));
+            Marker endMarker = new Marker("End", System.Drawing.Color.Red, new Coordinate(endLat, endLon));
+            markers.Add(startMarker);
+            markers.Add(endMarker);
+
+            List<string> marker_list = new List<string>();
+            marker_list.Add("markers=color:" + startMarker.Color.ToString().ToLower() + "|label:" + startMarker.Name + "|" + startMarker.Location.Lat.ToString() + "," + startMarker.Location.Lon.ToString() + "|"); // blue S at several zip code's centers
+            marker_list.Add("markers=color:" + endMarker.Color.ToString().ToLower() + "|label:" + endMarker.Name + "|" + endMarker.Location.Lat.ToString() + "," + endMarker.Location.Lon.ToString() + "|"); // blue S at several zip code's centers
+
+            string imageFormat = "png";
+            string mapType = "roadmap";
+
+            string path = Server.MapPath("~/Unzipped Files/mapImage.png");
+
+            getStaticMap(path, center, zoom, imgformat: imageFormat, maptype: mapType, markers: marker_list);
+
+            byte[] imageArray = File.ReadAllBytes(path);
+            string base64String = Convert.ToBase64String(imageArray);
+
+            Coordinate centerCoord = new Coordinate(centerLat, centerLon);
+
+            return (zoom, centerCoord, markers, mapType, height, width, imageFormat, base64String);
+        }
+
+        public void getStaticMap(IMAGEINFO imageInfo, string localName)
+        {
+            string request = "http://maps.google.com/maps/api/staticmap?"; // base URL, append query params, separated by &
+            string apiKey = ConfigurationManager.AppSettings["GoogleMapsAPIKey"];
+
+            //    #if center and zoom  are not given, the map will show all marker locations
+            request += String.Format("key={0}&", apiKey);
+            request += String.Format("center={0}&", imageInfo.Center);
+
+            request += String.Format("zoom={0}&", imageInfo.Zoom); // zoom 0 (all of the world scale ) to 22 (single buildings scale)
+            string imageSize = imageInfo.Height.ToString() + "x" + imageInfo.Width.ToString();
+            request += String.Format("size={0}&", imageSize); // tuple of ints, up to 640 by 640
+            request += String.Format("format={0}&", imageInfo.Format);
+            request += "bearing=90&";
+            //# request += "maptype=%s&" % maptype  # roadmap, satellite, hybrid, terrain
+            //# request += "visible=%s" % "Cambridge"
+
+            //# add markers (location and style)
+            if (imageInfo.Markers != null)
+            {
+                foreach (Marker marker in imageInfo.Markers)
+                {
+                    string markerString = "markers=color:" + marker.Color.ToString().ToLower() + "|label:" + marker.Name + "|" + marker.Location.Lat.ToString() + "," + marker.Location.Lon.ToString() + "|";
+                    request += String.Format("{0}&", markerString);
+                }
+            }
+
+            request = request.TrimEnd('&');
+
+            using (WebClient wc = new WebClient())
+            {
+                wc.DownloadFile(request, localName);
+            }
+        }
+
+        public void getStaticMap(string filename_wo_extension, string center, int zoom, string imgsize = "640x640", string imgformat = "jpeg", string maptype = "roadmap", List<string> markers = null)
+        {
+            string request = "http://maps.google.com/maps/api/staticmap?"; // base URL, append query params, separated by &
+            string apiKey = ConfigurationManager.AppSettings["GoogleMapsAPIKey"];
+
+            //    #if center and zoom  are not given, the map will show all marker locations
+            request += String.Format("key={0}&", apiKey);
+            request += String.Format("center={0}&", center);
+
+            request += String.Format("zoom={0}&", zoom); // zoom 0 (all of the world scale ) to 22 (single buildings scale)
+
+            request += String.Format("size={0}&", imgsize); // tuple of ints, up to 640 by 640
+            request += String.Format("format={0}&", imgformat);
+            request += "bearing=90&";
+            //# request += "maptype=%s&" % maptype  # roadmap, satellite, hybrid, terrain
+            //# request += "visible=%s" % "Cambridge"
+
+            //# add markers (location and style)
+            if (markers != null) {
+                foreach (string marker in markers) {
+                    request += String.Format("{0}&", marker);
+                }
+            }
+
+            request = request.TrimEnd('&');
+
+            using (WebClient wc = new WebClient())
+            {
+                wc.DownloadFile(request, filename_wo_extension);
+            }
+        }
+
+        public int calcZoomLevel(double north, double south, double east, double west, int pixelWidth, int pixelHeight)
+        {
+            int GLOBE_WIDTH = 256;
+            int ZOOM_MAX = 21;
+            double angle = east - west;
+            if (angle < 0)
+            {
+                angle += 360;
+            }
+            int zoomHoriz = (int)Math.Round(Math.Log(pixelWidth * 360 / angle / GLOBE_WIDTH) / Math.Log(2)) - 1;
+
+            angle = north - south;
+            if (angle < 0)
+            {
+                angle += 360;
+            }
+            double centerLat = (north + south) / 2;
+            int zoomVert = (int)Math.Round(Math.Log(pixelHeight * 360 / angle / GLOBE_WIDTH * Math.Cos(centerLat * Math.PI / 180)) / Math.Log(2)) - 1; // / math.cos(centerLat*math.pi/180)
+
+            int zoom = Math.Max(Math.Min(Math.Min(zoomHoriz, zoomVert), ZOOM_MAX), 0);
+            return zoom;
         }
 
         public ArrayList CreateGridData_TypeOfWork()
@@ -915,7 +1047,7 @@ namespace Neaera_Website_2018
             {
                 MailAddress m = new MailAddress(this.txtContactEmail.Text.ToString());
             }
-            catch (Exception ex)
+            catch(Exception ex)
             {
                 if (strRequiredfield.Length != 0)
                     strRequiredfield = strRequiredfield + " and enter a valid contact email address ";
@@ -928,7 +1060,7 @@ namespace Neaera_Website_2018
             return isvalid;
         }
 
-
+        
         protected void btnSaveConfirm_Click1(object sender, EventArgs e)
         {
             string confirmanswer = this.hidden_confirmoverwrite.Value.ToString();
@@ -941,7 +1073,7 @@ namespace Neaera_Website_2018
                 this.hdnParam.Value = "Your file has NOT been overwritten and has not been saved";
                 this.msgtype.Value = "Info";
             }
-
+            
 
         }
         public void SaveConfigFile()
@@ -978,7 +1110,7 @@ namespace Neaera_Website_2018
             }
         }
 
-
+        
         protected void btnSave_Click1(object sender, EventArgs e)
         {
             string test = this.myHiddenoutputlist.Value.ToString();
@@ -1016,7 +1148,7 @@ namespace Neaera_Website_2018
                 {
                     selectedfile = this.txtFilepath_configSave.Text.ToString();
                     //Check in Inprogress and published
-                    selectedfile_type = checkFolder(selectedfile);
+                    selectedfile_type= checkFolder(selectedfile);
                     if (selectedfile_type == "inprogressconfigfiles")
                         downloadlocal(selectedfile, "inprogressconfigfiles");
                     else if (selectedfile_type == "publishedconfigfiles")
@@ -1059,7 +1191,7 @@ namespace Neaera_Website_2018
                 //        downloadlocal(selectedfile, "publishedconfigfiles");
                 //    else
                 //    {
-
+                        
                 //        this.hdnParam.Value = "Please select a file to download from the list of published or unpublished files.";
                 //        this.msgtype.Value = "Error";
                 //        Page.ClientScript.RegisterStartupScript(this.GetType(), "CallMyFunction", "showContent();", true);
@@ -1336,18 +1468,18 @@ namespace Neaera_Website_2018
             this.btnDownloadFile_tab1.ForeColor = System.Drawing.Color.Gray;
             this.txtConfigType.Text = "Config status: Config status : Empty File (not saved or loaded configuration file).";
         }
-
+        
 
         protected void btnAddWorkType_Click(object sender, EventArgs e)
         {
             //add item to list
             //this.lsttypesofwork.Items.Add(new ListItem(this.ddTypeOfWork.SelectedValue.ToString(), this.chkArchetururalChange.Checked.ToString()));
             String columns = "{1, -55}{1, -35}";
-            // lsttypesofwork.Items.Add(String.Format(columns, "Filename", "Selected DateModified"));
+           // lsttypesofwork.Items.Add(String.Format(columns, "Filename", "Selected DateModified"));
             //lsttypesofwork.Items.Add(String.Format(columns, this.ddTypeOfWork.SelectedItem.Text.ToString(), this.chkArchetururalChange.Checked.ToString()));
         }
 
-
+        
     }
 
 
