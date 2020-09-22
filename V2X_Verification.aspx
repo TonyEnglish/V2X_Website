@@ -1,4 +1,4 @@
-﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="V2X_Verification.aspx.cs" Inherits="Neaera_Website_2018.V2X_Verification" %>
+<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="V2X_Verification.aspx.cs" Inherits="Neaera_Website_2018.V2X_Verification" %>
 
 <!DOCTYPE html>
 
@@ -182,6 +182,8 @@
                 map.controls[google.maps.ControlPosition.TOP_CENTER].push(center_display);
                 //initEvents();
             }
+            initMap()
+
             function loadGeoJsonString(geoString) {
                 var geojson = JSON.parse(geoString);
                 map.data.addGeoJson(geojson);
@@ -269,7 +271,8 @@
 
             var mypopup = false
             function openVisPopup() {
-                var url = 'RSZW_MapVisualizer.html'
+                //var url = 'RSZW_MapVisualizer.html'
+                var url = 'V2X_MapVisualizer.aspx'
                 var mypopup = window.open(url, 'popup_window', 'width=1000,height=600,left=100,top=100,resizable=yes');
                 if (!mypopup) {
                     alert('Visualization popup was blocked. Please enable popups for this site');
@@ -311,9 +314,9 @@
                 }
             }
         </script>
-        <script
-            src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB6C5lgal0QWlYqp9AS6LHtAqTG9fH9GPA&callback=initMap">
-        </script>
+        <%--<script
+            src="https://maps.googleapis.com/maps/api/js?key=api-key-here&callback=initMap">
+        </script>--%>
     </form>
 </body>
 </html>
