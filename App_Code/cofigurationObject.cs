@@ -1,9 +1,11 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System;
 using System.ComponentModel;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System.Diagnostics.Tracing;
+using System.Drawing;
+using System.Runtime.InteropServices;
 
 namespace Neaera_Website_2018
 
@@ -22,6 +24,7 @@ namespace Neaera_Website_2018
         public SCHEDULE Schedule { get; set; }
         public LOCATION Location { get; set; }
         public METADATA metadata { get; set; }
+        public IMAGEINFO ImageInfo { get; set; }
     }
 
     public class GENERALINFO
@@ -34,7 +37,31 @@ namespace Neaera_Website_2018
         public string EndingCrossStreet { get; set; }//ending cross street
         public int BeginningMilePost { get; set; }//int beginning milepost
         public int EndingMilePost { get; set; } //int ending milepost
-        public EVENTSTATUS? EventStatus { get; set; } //calculated
+        public EVENTSTATUS ? EventStatus { get; set; } //calculated
+    }
+
+    public class IMAGEINFO
+    {
+        public int Zoom { get; set; }
+        public Coordinate Center { get; set; }
+        public List<Marker> Markers { get; set; }
+        public string MapType { get; set; }
+        public int Height { get; set; }
+        public int Width { get; set; }
+        public string Format { get; set; }
+        public string ImageString { get; set; }
+    }
+    public class Marker
+    {
+        public string Name { get; set; }
+        public Color Color { get; set; }
+        public Coordinate Location { get; set; }
+        public Marker(string name, Color color, Coordinate location)
+        {
+            Name = name;
+            Color = color;
+            Location = location;
+        }
     }
 
     public class LANEINFO
@@ -75,8 +102,8 @@ namespace Neaera_Website_2018
 
     public class TYPEOFWORK
     {
-        public WORKTYPE WorkType { get; set; }
-        public bool Is_Architectural_Change; //** check box y/n
+       public WORKTYPE WorkType { get; set; }
+       public bool Is_Architectural_Change; //** check box y/n
     }
 
     public class SPEEDLIMITS
@@ -114,6 +141,21 @@ namespace Neaera_Website_2018
         public double Lat { get; set; }
         public double Lon { get; set; }
         public double? Elev { get; set; }
+        public Coordinate()
+        {
+
+        }
+        public Coordinate(double lat, double lon)
+        {
+            Lat = lat;
+            Lon = lon;
+        }
+        public Coordinate(double lat, double lon, double? elev)
+        {
+            Lat = lat;
+            Lon = lon;
+            Elev = elev;
+        }
     }
 
     [JsonConverter(typeof(CustomStringEnumConverter))]
@@ -153,7 +195,7 @@ namespace Neaera_Website_2018
     public enum DIRECTION
     {
         [Description("northbound")] northbound,
-        [Description("eastbound")] eastbound,
+        [Description("eastbound")] eastbound ,
         [Description("southbound")] southbound,
         [Description("westbound")] westbound
     }
@@ -184,7 +226,7 @@ namespace Neaera_Website_2018
         [Description("reduced-length")] reducedlength,
         [Description("reduced-weight")] reducedweight,
         [Description("axle-load-limit")] axleloadlimit,
-        [Description("gross-weight-limit")] grossweightlimit,
+        [Description("gross-weight-limit")]  grossweightlimit,
         [Description("towing-prohibited")] towingprohibited,
         [Description("permitted-oversize-loads-prohibited")] permittedoversizeloadsprohibitied
     }
@@ -211,14 +253,14 @@ namespace Neaera_Website_2018
         [Description("left-shoulder")] leftshoulder
     }
     [JsonConverter(typeof(CustomStringEnumConverter))]
-    public enum RESTRICTIONUNITS
+    public enum RESTRICTIONUNITS 
     {
         [Description("feet")] feet,
         [Description("inches")] inches,
         [Description("centimeters")] centimeters,
         [Description("pounds")] pounds,
         [Description("tons")] tons,
-        [Description("kilograms")] kilograms
+        [Description("kilograms")] kilograms 
     }
     [JsonConverter(typeof(CustomStringEnumConverter))]
     public enum WZ_LOCATION_METHODS
