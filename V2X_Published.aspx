@@ -1,4 +1,4 @@
-﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="V2X_Published.aspx.cs" Inherits="Neaera_Website_2018.V2X_Published" %>
+<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="V2X_Published.aspx.cs" Inherits="Neaera_Website_2018.V2X_Published" %>
 
 <!DOCTYPE html>
 
@@ -139,13 +139,13 @@
                 <div class="hero-intro">
                     <div class="grid-row">
                         <div class="tablet:grid-col-8">
-                            <h2 align="left">V2X Enabled Work Zone Data Collection</h2>
+                            <h2 align="left">V2X TMC Data Collection Website</h2>
                         </div>
                     </div>
                     <div class="grid-row">
                         <div class="tablet:grid-col-8">
                             <p align="left">
-                                Get Work Zone Data
+                                Work Zone Data Exchange - Get Work Zone Data
                             </p>
                         </div>
                     </div>
@@ -229,10 +229,10 @@
                 var boulder = { lat: 40.93977, lng: -105.185182 };
                 map = new google.maps.Map(
                     document.getElementById('map'), {
-                    zoom: 4,
-                    center: boulder,
-                    mapTypeId: google.maps.MapTypeId.HYBRID
-                }
+                        zoom: 4,
+                        center: boulder,
+                        mapTypeId: google.maps.MapTypeId.HYBRID
+                    }
                 );
                 center_display = document.getElementById('info-box')
                 map.controls[google.maps.ControlPosition.TOP_CENTER].push(center_display);
