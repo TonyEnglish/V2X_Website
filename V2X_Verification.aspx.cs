@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Drawing;
@@ -189,6 +189,8 @@ namespace Neaera_Website_2018
             string data_wo_metadata = data.Replace(subStr, "\"\"");
 
             CloudBlobContainer publishedContainer = blobClient.GetContainerReference("publishedworkzones");
+
+            // Response codes described here: https://sdxbeta-service.trihydro.com/index.html
             Dictionary<int, string> postDict = new Dictionary<int, string>
             {
                 {200, "Success"},
@@ -382,7 +384,7 @@ namespace Neaera_Website_2018
                 listConfigurationFiles.Items.Add(new ListItem(listItem));
             }
         }
-        public (int, List<double[]>, List<int[]>, List<int[]>, double[], double[]) buildVehPathData_LaneStat(int totalLanes, int sampleFreq)
+        public (int, List<double[]>, List<int[]>, List<int[]>, double[], double[], int) buildVehPathData_LaneStat(int totalLanes)
         {
             double[] refPoint = new double[] { 0, 0, 0 };
             int laneStatIdx = 0;
@@ -433,6 +435,8 @@ namespace Neaera_Website_2018
                     value.Add(values[9]);
                 }
             }
+            int sampleFreq = (int)Math.Round(GPSDateTime.Count * 1000 / (System.DateTime.ParseExact(GPSDateTime[GPSDateTime.Count - 1], "yyyy/MM/dd-HH:mm:ss:ff", CultureInfo.InvariantCulture) 
+                - System.DateTime.ParseExact(GPSDateTime[0], "yyyy/MM/dd-HH:mm:ss:ff", CultureInfo.InvariantCulture)).TotalMilliseconds);
             for (int i = 0; i < GPSDateTime.Count(); i++)
             {
                 if (!gotRefPt && (marker[i] == "RP" || marker[i] == "LC+RP" || marker[i] == "WP+RP")) //Reference point marker
@@ -487,7 +491,7 @@ namespace Neaera_Website_2018
                 refPtIdx, wzLen, appHeading
             };
 
-            return (totalLanes, pathPt, laneStat, wpStat, refPoint, atRefPoint);
+            return (totalLanes, pathPt, laneStat, wpStat, refPoint, atRefPoint, sampleFreq);
         }
         public double getChordLength(double[] point1, double[] point2)
         {
@@ -552,7 +556,7 @@ namespace Neaera_Website_2018
             return lla_ls_hwp.ToArray();
         }
         public (List<double[]>, double[]) getConcisePathPoints(int laneType, List<double[]> pathPt, List<double[]> mapPt, double laneWidth, double lanePad, int refPtIdx, double mapPtDist,
-        List<int[]> laneStat, List<int[]> wpStat, int dataLane, double[] wzMapLen, int[] speedList)
+        List<int[]> laneStat, List<int[]> wpStat, int dataLane, double[] wzMapLen, int[] speedList, double dataFreq)
         {
 
 
@@ -564,10 +568,11 @@ namespace Neaera_Website_2018
 
             int totDataPt = pathPt.Count();
             int[] lcwpStat = new int[tLanes + 1];
-            int[] laneTaperStat = new int[tLanes + 1]; //0 = no taper, 1 = taper-right, 2 = taper-left, 3=none, 4=either
+            int[] laneTaperStat = new int[tLanes]; //0 = no taper, 1 = taper-right, 2 = taper-left, 3=none, 4=either
 
             int dL = dataLane - 1;                              //set lane number starting 0 as the left most lane
-            double dataFreq = 10.0;
+            var temp = pathPt[0][0];
+            // double dataFreq = 10.0;
             double distVec = 0;
             int stopIndex = 0;
             int startIndex = 0;
@@ -657,7 +662,7 @@ namespace Neaera_Website_2018
                                     else if (ln != 0 && ln != tLanes - 1)
                                     {
                                         bool leftLaneOpen = false;
-                                        if (lcwpStat[ln - 1] == 0) leftLaneOpen = true;
+                                        if (lcwpStat[ln-1] == 0) leftLaneOpen = true;
 
                                         bool rightLaneOpen = false;
                                         if (lcwpStat[ln + 1] == 0) rightLaneOpen = true;
@@ -707,7 +712,7 @@ namespace Neaera_Website_2018
                         if (wpStat[wpZone][0] == i - 1) //Workers present start/end found, save point and add to node list
                         {
                             requiredNode = true;
-                            lcwpStat[lcwpStat.Count() - 1] = wpStat[wpZone][1];
+                            lcwpStat[tLanes] = wpStat[wpZone][1];
                         }
                     }
                 };
@@ -782,7 +787,7 @@ namespace Neaera_Website_2018
                 {
                     distFromLC += (pathPt[i - 1][0] * 3.28084) / dataFreq; //In feet
                 }
-                // Step 9
+            // Step 9
                 // Integrated into step 7
             }
             if (laneType == 1) wzMapLen[0] = totalDist;
@@ -1071,7 +1076,7 @@ namespace Neaera_Website_2018
         {
             var wzConfig = JsonConvert.DeserializeObject<configurationObject>(File.ReadAllText(Server.MapPath("~/Unzipped Files/config.json")));
 
-            int sampleFreq = 10;
+            // int sampleFreq = 10;
 
             string wzDesc = wzConfig.GeneralInfo.Description;
 
@@ -1109,7 +1114,7 @@ namespace Neaera_Website_2018
 
             double[] atRefPoint = new double[3];
             (int totalLanesOut, List<double[]> pathPt, List<int[]> laneStat, List<int[]> wpStat,
-                double[] refPoint, double[] atRefPointOut) = buildVehPathData_LaneStat(totalLanes, sampleFreq);
+                double[] refPoint, double[] atRefPointOut, int sampleFreq) = buildVehPathData_LaneStat(totalLanes);
             totalLanes = totalLanesOut;
             atRefPoint = atRefPointOut;
 
@@ -1126,14 +1131,14 @@ namespace Neaera_Website_2018
             int wzMapPtDist = 200;
             List<double[]> appMapPt = new List<double[]>();
             int laneType = 1; //Approach Region
-            (List<double[]> appMapPtOut, double[] wzMapLenOut) = getConcisePathPoints(laneType, pathPt, appMapPt, laneWidth, lanePadApp, refPtIdx, appMapPtDist, laneStat, wpStat, dataLane, wzMapLen, speedList);
+            (List<double[]> appMapPtOut, double[] wzMapLenOut) = getConcisePathPoints(laneType, pathPt, appMapPt, laneWidth, lanePadApp, refPtIdx, appMapPtDist, laneStat, wpStat, dataLane, wzMapLen, speedList, sampleFreq);
             //(List<double[]> appMapPtOut, double[] wzMapLenOut) = getLanePt(laneType, pathPt, appMapPt, laneWidth, lanePadApp, refPtIdx, appMapPtDist, laneStat, wpStat, dataLane, wzMapLen);
             appMapPt = appMapPtOut;
             wzMapLen = wzMapLenOut;
 
             List<double[]> wzMapPt = new List<double[]>();
             laneType = 2;
-            (List<double[]> wzMapPtOut, double[] wzMapLenOut_2) = getConcisePathPoints(laneType, pathPt, wzMapPt, laneWidth, lanePadWZ, refPtIdx, wzMapPtDist, laneStat, wpStat, dataLane, wzMapLen, speedList);
+            (List<double[]> wzMapPtOut, double[] wzMapLenOut_2) = getConcisePathPoints(laneType, pathPt, wzMapPt, laneWidth, lanePadWZ, refPtIdx, wzMapPtDist, laneStat, wpStat, dataLane, wzMapLen, speedList, sampleFreq);
             //(List<double[]> wzMapPtOut, double[] wzMapLenOut_2) = getLanePt(laneType, pathPt, wzMapPt, laneWidth, lanePadWZ, refPtIdx, wzMapPtDist, laneStat, wpStat, dataLane, wzMapLen);
             wzMapPt = wzMapPtOut;
             wzMapLen = wzMapLenOut_2;
