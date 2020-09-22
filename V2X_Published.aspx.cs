@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.CodeDom;
 using System.Collections.Generic;
 using System.Configuration;
@@ -21,6 +21,16 @@ namespace Neaera_Website_2018
             if (!IsPostBack)
             {
                 fillConfigurationFiles();
+            }
+            if (!ClientScript.IsStartupScriptRegistered("googleMapScript"))
+            {
+                // Register Startup Script for Google Maps API
+                string key = ConfigurationManager.AppSettings["GoogleMapsAPIKey"];
+                string api_url = "https://maps.googleapis.com/maps/api/js?key=" + key; //&callback=initMap  + "&libraries=places"
+                string myScript = "<script type=\"text/javascript\" src=\"" + api_url + "\"> </script>";
+                //string myScript = "&lt;script type=\"text/javascript\" src=\""+ ConfigurationManager.AppSettings["localhost"] + "\"&gt;&lt;/script&gt;";
+                //this.Page.ClientScript.RegisterStartupScript(typeof(Page), "googleMapScript", myScript, true);
+                Page.ClientScript.RegisterClientScriptInclude("googleMapScript", api_url);
             }
             //loadPreviousMap();
         }
