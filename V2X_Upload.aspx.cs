@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Globalization;
@@ -34,7 +34,7 @@ namespace Neaera_Website_2018
             CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
 
             // Retrieve reference to a previously created container.
-            CloudBlobContainer container = blobClient.GetContainerReference("workzonedatauploads");
+            CloudBlobContainer container = blobClient.GetContainerReference("workzoneuploads");
 
             // Retrieve reference to a blob named "myblob".
             CloudBlockBlob blockBlob = container.GetBlockBlobReference(Regex.Replace(file_uploadpath.PostedFile.FileName, @"[^a-zA-Z0-9.\-]", "-").ToLower());
