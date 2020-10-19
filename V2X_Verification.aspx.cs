@@ -69,6 +69,7 @@ namespace Neaera_Website_2018
             {
                 //VerificationButton.Visible = false;
                 fillConfigurationFiles();
+                File.WriteAllText(Server.MapPath("~/Map Visualizer/RSZW_MAP_Data.js"), string.Empty);
             }
             if (!ClientScript.IsStartupScriptRegistered("googleMapScript"))
             {
@@ -720,7 +721,7 @@ namespace Neaera_Website_2018
             string localPath = "~/Unzipped Files/data.csv";
             uploadFile(container, cloudPathData, localPath);
 
-            this.hdnParam.Value = "Work Zone Edits Saved. New messages will be generated shortly";
+            this.hdnParam.Value = "Work zone edits saved and uploaded. Messages will be generated shortly";
             this.msgtype.Value = "Success";
             Page.ClientScript.RegisterStartupScript(this.GetType(), "CallMyFunction", "showContent();", true);
         }
