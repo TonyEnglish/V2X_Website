@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.CodeDom;
 using System.Collections.Generic;
 using System.Configuration;
@@ -65,6 +65,33 @@ namespace Neaera_Website_2018
                         fs.Flush();
                     }
                 }
+
+                List<string> blobListXML = container.ListBlobs("rsm-xml/").OfType<CloudBlockBlob>().Where(b => b.Name.Contains(id)).Select(b => b.Name).ToList();
+                if (!blobListXML.Any())
+                {
+                    rsm_xml_checkbox.Disabled = true;
+                    rsm_xml_checkbox.Checked = false;
+                }
+                else
+                {
+                    rsm_xml_checkbox.Disabled = false;
+                }
+
+                List<string> blobListUPER = container.ListBlobs("rsm-uper/").OfType<CloudBlockBlob>().Where(b => b.Name.Contains(id)).Select(b => b.Name).ToList();
+                if (!blobListUPER.Any())
+                {
+                    rsm_uper_checkbox.Disabled = true;
+                    rsm_uper_checkbox.Checked = false;
+                }
+                else
+                {
+                    rsm_uper_checkbox.Disabled = false;
+                }
+
+
+                DeletePublishWZButton.Attributes.Remove("disabled");
+                DeletePublishWZButton.Attributes["class"] = DeletePublishWZButton.Attributes["class"].Replace("btnDisabled", "");
+
                 loadDescription();
                 loadGeoJsonVis();
             }
@@ -120,7 +147,8 @@ namespace Neaera_Website_2018
                 listConfigurationFiles.Items.Add(new ListItem(listItem));
             }
         }
-        protected void DownloadButton_Click(object sender, EventArgs e)
+
+            protected void DownloadButton_Click(object sender, EventArgs e)
         {
             try
             {
@@ -220,6 +248,59 @@ namespace Neaera_Website_2018
                 Response.ContentType = "application/octet-stream";
                 Response.Flush();
                 Response.End();
+            }
+        }
+
+        protected void DeletePublishWZButton_Click(object sender, EventArgs e)
+        {
+            string id = listConfigurationFiles.SelectedValue;
+            try
+            {
+                archivePublishedFiles(id);
+                this.hdnParam.Value = "Successfully deleted and archived published work zone";
+                this.msgtype.Value = "Success";
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "CallMyFunction", "showContent();", true);
+                fillConfigurationFiles();
+            }
+            catch (Exception ex)
+            {
+                this.hdnParam.Value = "Failed to delete work zone: " + ex.Message;
+                this.msgtype.Value = "Failed";
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "CallMyFunction", "showContent();", true);
+            }
+        }
+
+        public void archivePublishedFiles(string id)
+        {
+            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(ConfigurationManager.ConnectionStrings["StorageConnectionString"].ConnectionString);
+            CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
+            CloudBlobContainer publishedContainer = blobClient.GetContainerReference("publishedworkzones");
+            CloudBlobContainer archivedContainer = blobClient.GetContainerReference("archivedworkzones");
+
+            string timestamp = DateTime.Now.ToString("MMddyyyy-hhmmss");
+            string begin = "Archived-" + timestamp + "--";
+            List<string[]> files = new List<string[]>();
+            string configFile = "config--" + id + ".json"; //config--test-road--2019-11-8--2019-11-10.json
+            files.Add(new string[] { "config/" + configFile, "config/" + begin + configFile });
+            string geojsonFile = "wzdx--" + id + ".geojson";
+            files.Add(new string[] { "wzdx/" + geojsonFile, "wzdx/" + begin + geojsonFile });
+
+            List<string> xmlFiles = new List<string>();
+            var xmlList = publishedContainer.ListBlobs("rsm-xml/");
+            List<string> blobNamesXml = xmlList.OfType<CloudBlockBlob>().Where(b => b.Name.Contains(id)).Select(b => b.Name.Replace("rsm-xml/", "")).ToList();
+            foreach (string name in blobNamesXml) files.Add(new string[] { "rsm-xml/" + name, "rsm-xml/" + begin + name });
+
+            List<string> uperFiles = new List<string>();
+            var uperList = publishedContainer.ListBlobs("rsm-uper/");
+            List<string> blobNamesUper = uperList.OfType<CloudBlockBlob>().Where(b => b.Name.Contains(id)).Select(b => b.Name.Replace("rsm-uper/", "")).ToList();
+            foreach (string name in blobNamesUper) files.Add(new string[] { "rsm-uper/" + name, "rsm-uper/" + begin + name });
+
+            foreach (string[] file in files)
+            {
+                CloudBlockBlob blob_source = publishedContainer.GetBlockBlobReference(file[0]);
+                CloudBlockBlob blob_dest = archivedContainer.GetBlockBlobReference(file[1]);
+                blob_dest.StartCopy(blob_source);
+                blob_source.DeleteAsync();
             }
         }
     }

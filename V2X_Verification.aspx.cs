@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Drawing;
@@ -16,9 +16,11 @@ using System.Threading.Tasks;
 using System.Web;
 using System.Web.Hosting;
 using System.Web.UI;
+using System.Web.UI.HtmlControls;
 using System.Web.UI.WebControls;
 using Ionic.Zip;
-using Microsoft.Azure; // Namespace for Azure Configuration Manager
+// using Microsoft.Azure; // Namespace for Azure Configuration Manager
+
 using Microsoft.WindowsAzure.Storage; // Namespace for Storage Client Library
 using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
@@ -37,33 +39,62 @@ namespace Neaera_Website_2018
             name = name_val;
         }
     }
+    public class csvDataObj
+    {
+        public DateTime GPSDateTime { get; set; }
+        public int NumStats { get; set; }
+        public double HDOP { get; set; }
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+        public double Altitude { get; set; }
+        public double Speed { get; set; }
+        public double Heading { get; set; }
+        public string Marker { get; set; }
+        public string Value { get; set; }
+    }
+
+    public class MarkerPair
+    {
+        public string Marker { get; set; }
+        public string Value { get; set; }
+    }
 
     public partial class V2X_Verification : System.Web.UI.Page
     {
         configurationObject jsonConfig;
+        string activeWZID;
         protected void Page_Load(object sender, EventArgs e)
         {
             if (!IsPostBack)
             {
                 //VerificationButton.Visible = false;
                 fillConfigurationFiles();
+                File.WriteAllText(Server.MapPath("~/Map Visualizer/RSZW_MAP_Data.js"), string.Empty);
             }
+
             if (!ClientScript.IsStartupScriptRegistered("googleMapScript"))
             {
                 // Register Startup Script for Google Maps API
                 string key = ConfigurationManager.AppSettings["GoogleMapsAPIKey"];
-                string api_url = "https://maps.googleapis.com/maps/api/js?key=" + key; //&callback=initMap  + "&libraries=places"
+                string api_url = "https://maps.googleapis.com/maps/api/js?key=" + key + "&libraries=geometry"; //&callback=initMap  + "&libraries=places"
                 string myScript = "<script type=\"text/javascript\" src=\"" + api_url + "\"> </script>";
                 //string myScript = "&lt;script type=\"text/javascript\" src=\""+ ConfigurationManager.AppSettings["localhost"] + "\"&gt;&lt;/script&gt;";
                 //this.Page.ClientScript.RegisterStartupScript(typeof(Page), "googleMapScript", myScript, true);
                 Page.ClientScript.RegisterClientScriptInclude("googleMapScript", api_url);
             }
+
+            string mapScript1 = "<script type=\"text/javascript\" src=\"./Map Visualizer/RSZW_MAP_Data.js\"> </script>";
+            Page.ClientScript.RegisterStartupScript(this.GetType(), "RSZW_MAP_Data", mapScript1);
+
+            string mapScript2 = "<script type=\"text/javascript\" src=\"./Map Visualizer/RSZW_MapVisualization_v5.js\"> </script>";
+            Page.ClientScript.RegisterStartupScript(this.GetType(), "RSZW_MapVisualization_v5", mapScript2);
         }
         protected void VisualizeButton_Click(object sender, EventArgs e)
         {
             try
             {
                 string id = this.listConfigurationFiles.SelectedValue.ToString();
+                this.HiddenWZID.Value = id;
                 string configFile = "config--" + id + ".json"; //config--test-road--2019-11-8--2019-11-10.json
                 string dataFile = "path-data--" + id + ".csv";
                 string geojsonFile = "wzdx--" + id + ".geojson";
@@ -76,43 +107,108 @@ namespace Neaera_Website_2018
                 // Retrieve reference to a previously created container."publishedworkzones"
                 CloudBlobContainer container = blobClient.GetContainerReference("unapprovedworkzones");
 
-                using (FileStream fs = new FileStream(Server.MapPath("~/Unzipped Files/data.csv"), FileMode.Create))
-                {
-                    CloudBlockBlob data_file = container.GetBlockBlobReference("pathdatafiles/" + dataFile);
-                    using (MemoryStream temp = new MemoryStream())
-                    {
-                        data_file.DownloadToStream(temp);
-                        temp.Position = 0;
-                        temp.CopyTo(fs);
-                        fs.Flush();
-                    }
-                }
-                using (FileStream fs = new FileStream(Server.MapPath("~/Unzipped Files/config.json"), FileMode.Create))
-                {
-                    CloudBlockBlob data_file = container.GetBlockBlobReference("configurationfiles/" + configFile);
-                    using (MemoryStream temp = new MemoryStream())
-                    {
-                        data_file.DownloadToStream(temp);
-                        temp.Position = 0;
-                        temp.CopyTo(fs);
-                        fs.Flush();
-                    }
-                }
-                using (FileStream fs = new FileStream(Server.MapPath("~/Unzipped Files/wzdx.geojson"), FileMode.Create))
-                {
-                    CloudBlockBlob data_file = container.GetBlockBlobReference("wzdxfiles/" + geojsonFile);
-                    using (MemoryStream temp = new MemoryStream())
-                    {
-                        data_file.DownloadToStream(temp);
-                        temp.Position = 0;
-                        temp.CopyTo(fs);
-                        fs.Flush();
-                    }
-                }
+                downloadFile("unapprovedworkzones", "pathdatafiles/" + dataFile, "~/Unzipped Files/data.csv");
+                downloadFile("unapprovedworkzones", "configurationfiles/" + configFile, "~/Unzipped Files/config.json");
+                downloadFile("unapprovedworkzones", "wzdxfiles/" + geojsonFile, "~/Unzipped Files/wzdx.geojson");
 
-                createVisualizer();
+                //using (FileStream fs = new FileStream(Server.MapPath("~/Unzipped Files/data.csv"), FileMode.Create))
+                //{
+                //    CloudBlockBlob data_file = container.GetBlockBlobReference("pathdatafiles/" + dataFile);
+                //    using (MemoryStream temp = new MemoryStream())
+                //    {
+                //        data_file.DownloadToStream(temp);
+                //        temp.Position = 0;
+                //        temp.CopyTo(fs);
+                //        fs.Flush();
+                //    }
+                //}
+                //using (FileStream fs = new FileStream(Server.MapPath("~/Unzipped Files/config.json"), FileMode.Create))
+                //{
+                //    CloudBlockBlob data_file = container.GetBlockBlobReference("configurationfiles/" + configFile);
+                //    using (MemoryStream temp = new MemoryStream())
+                //    {
+                //        data_file.DownloadToStream(temp);
+                //        temp.Position = 0;
+                //        temp.CopyTo(fs);
+                //        fs.Flush();
+                //    }
+                //}
+                //using (FileStream fs = new FileStream(Server.MapPath("~/Unzipped Files/wzdx.geojson"), FileMode.Create))
+                //{
+                //    CloudBlockBlob data_file = container.GetBlockBlobReference("wzdxfiles/" + geojsonFile);
+                //    using (MemoryStream temp = new MemoryStream())
+                //    {
+                //        data_file.DownloadToStream(temp);
+                //        temp.Position = 0;
+                //        temp.CopyTo(fs);
+                //        fs.Flush();
+                //    }
+                //}
+
+                (int numLanes, List<int[]> laneStat, List<int[]> wpStat, int rpRow, int numRows) = createVisualizer();
 
                 loadGeoJsonVis();
+
+                VerificationButton.Style["display"] = "block";
+                // VerificationButton.Visible = true;
+
+                List<string[]> markers = new List<string[]>();
+                markers.Add(new string[] {
+                    "0", "Data Log", "True"
+                });
+                markers.Add(new string[] {
+                    rpRow.ToString(), "RP", ""
+                });
+
+                Dictionary<int, string> laneStatDict = new Dictionary<int, string>
+                {
+                    {1, "LC"},
+                    {0, "LO"},
+                };
+
+                Dictionary<int, string> wpStatDict = new Dictionary<int, string>
+                {
+                    {0, "False"},
+                    {1, "True"},
+                };
+
+                int l = 1;
+                int w = 0;
+                bool laneStop = false;
+                bool wpStop = false;
+
+                int laneRow;
+                int wpRow;
+                // Really complicated way of organizing markers in order
+                while (!laneStop || !wpStop)
+                {
+                    try { laneRow = laneStat[l][0]; }
+                    catch { laneRow = 0; laneStop = true; }
+
+                    try { wpRow = wpStat[w][0]; }
+                    catch { wpRow = 0; wpStop = true; }
+
+                    if (!laneStop && ((laneRow <= wpRow) || wpStop))
+                    {
+                        markers.Add(new string[] {
+                            laneStat[l][0].ToString(), laneStatDict[laneStat[l][2]].ToString(), laneStat[l][1].ToString()
+                        });
+                        l++;
+                    }
+                    else if (!wpStop && ((wpRow <= laneRow) || laneStop))
+                    {
+                        markers.Add(new string[] {
+                            wpStat[w][0].ToString(), "WP", wpStatDict[wpStat[w][1]].ToString()
+                        });
+                        w++;
+                    };
+                }
+
+                markers.Add(new string[] {
+                    numRows.ToString(), "Data Log", "False"
+                });
+
+                loadMarkerTables(markers, numLanes);
             }
             catch (System.Exception ex)
             {
@@ -120,6 +216,46 @@ namespace Neaera_Website_2018
                 this.msgtype.Value = "Error";
                 Page.ClientScript.RegisterStartupScript(this.GetType(), "CallMyFunction", "showContent();", true);
             }
+        }
+
+        private void removeClasses(HtmlGenericControl obj, List<string> classes)
+        {
+            string classesString = obj.Attributes["class"];
+            foreach (string className in classes)
+            {
+                classesString = classesString.Replace(className, "");
+            }
+            obj.Attributes["class"] = classesString;
+        }
+
+        private void removeClasses(HtmlAnchor obj, List<string> classes)
+        {
+            string classesString = obj.Attributes["class"];
+            foreach (string className in classes)
+            {
+                classesString = classesString.Replace(className, "");
+            }
+            obj.Attributes["class"] = classesString;
+        }
+
+        private void addClasses(HtmlGenericControl obj, List<string> classes)
+        {
+            string classesString = obj.Attributes["class"];
+            foreach (string className in classes)
+            {
+                classesString = classesString + " " + className;
+            }
+            obj.Attributes["class"] = classesString;
+        }
+
+        private void addClasses(HtmlAnchor obj, List<string> classes)
+        {
+            string classesString = obj.Attributes["class"];
+            foreach (string className in classes)
+            {
+                classesString = classesString + " " + className;
+            }
+            obj.Attributes["class"] = classesString;
         }
 
         public void createSpeedLimitSigns(List<SpeedLimit> speedlimits)
@@ -183,10 +319,10 @@ namespace Neaera_Website_2018
 
             string path = Server.MapPath("~/Unzipped Files/wzdx.geojson");
             string data = File.ReadAllText(path);
-            int startIndex = data.IndexOf("\"metadata\": ") + 12;
-            int endIndex = data.IndexOf(",\r\n    \"version\":", startIndex);
-            string subStr = data.Substring(startIndex, endIndex - startIndex);
-            string data_wo_metadata = data.Replace(subStr, "\"\"");
+            //int startIndex = data.IndexOf("\"metadata\": ") + 12;
+            //int endIndex = data.IndexOf(",\r\n    \"version\":", startIndex);
+            //string subStr = data.Substring(startIndex, endIndex - startIndex);
+            //string data_wo_metadata = data.Replace(subStr, "\"\"");
 
             CloudBlobContainer publishedContainer = blobClient.GetContainerReference("publishedworkzones");
 
@@ -209,7 +345,7 @@ namespace Neaera_Website_2018
             };
             if (publishedContainer.GetBlockBlobReference(files[0][1]).Exists())
             {
-                int response = WebRequest(data_wo_metadata, "PUT");
+                int response = WebRequest(data, "PUT");
                 if (response == 204)
                 {
                     // Success!
@@ -217,7 +353,7 @@ namespace Neaera_Website_2018
                 else if (response == 404)
                 {
                     // Feed info id does not exist, try POST operation
-                    int secondResponse = WebRequest(data_wo_metadata, "POST");
+                    int secondResponse = WebRequest(data, "POST");
                     if (secondResponse != 200)
                     {
                         // Failed
@@ -240,7 +376,7 @@ namespace Neaera_Website_2018
             }
             else
             {
-                int response = WebRequest(data_wo_metadata, "POST");
+                int response = WebRequest(data, "POST");
                 if (response == 200)
                 {
                     // Success!
@@ -248,7 +384,7 @@ namespace Neaera_Website_2018
                 else if (response == 409)
                 {
                     // Feed info id already exists, try PUT operation
-                    int secondResponse = WebRequest(data_wo_metadata, "PUT");
+                    int secondResponse = WebRequest(data, "PUT");
                     if (secondResponse != 204)
                     {
                         // Failed
@@ -273,14 +409,14 @@ namespace Neaera_Website_2018
                 CloudBlockBlob blob_source = container.GetBlockBlobReference(file[0]);
                 CloudBlockBlob blob_dest = publishedContainer.GetBlockBlobReference(file[1]);
                 blob_dest.StartCopy(blob_source);
-                blob_source.DeleteAsync();
             }
 
-            foreach (string[] file in extraFiles)
-            {
-                CloudBlockBlob blob = container.GetBlockBlobReference(file[0]);
-                blob.DeleteAsync();
-            }
+            // //Commenting out because we no longer want to delete in progress work zone files when a work zone is published
+            //foreach (string[] file in extraFiles)
+            //{
+            //    CloudBlockBlob blob = container.GetBlockBlobReference(file[0]);
+            //    blob.DeleteAsync();
+            //}
             VerificationButton.Style["display"] = "none";
             this.hdnParam.Value = "Your work zone has been successfully published";
             this.msgtype.Value = "Success";
@@ -323,6 +459,278 @@ namespace Neaera_Website_2018
             else return 0;
         }
 
+        public void downloadFile(string containerName, string cloudFile, string localPath)
+        {
+            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(ConfigurationManager.ConnectionStrings["StorageConnectionString"].ConnectionString);
+
+            // Create the blob client.
+            CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
+
+            // Retrieve reference to a previously created container."publishedworkzones"
+            CloudBlobContainer container = blobClient.GetContainerReference(containerName);
+
+            using (FileStream fs = new FileStream(Server.MapPath(localPath), FileMode.Create))
+            {
+                CloudBlockBlob data_file = container.GetBlockBlobReference(cloudFile);
+                using (MemoryStream temp = new MemoryStream())
+                {
+                    data_file.DownloadToStream(temp);
+                    temp.Position = 0;
+                    temp.CopyTo(fs);
+                    fs.Flush();
+                    //if (fs.Length > 0)
+                    //    return true;
+                    //else
+                    //    return false;
+                }
+            }
+        }
+
+        public void uploadFile(string containerName, string cloudFile, string localPath)
+        {
+            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(ConfigurationManager.ConnectionStrings["StorageConnectionString"].ConnectionString);
+
+            // Create the blob client.
+            CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
+
+            // Retrieve reference to a previously created container."publishedworkzones"
+            CloudBlobContainer container = blobClient.GetContainerReference(containerName);
+
+            CloudBlockBlob blockBlob = container.GetBlockBlobReference(Regex.Replace(cloudFile, @"[^a-zA-Z0-9.\-]", "-").ToLower());
+
+            using (FileStream fs = new FileStream(Server.MapPath(localPath), FileMode.Open))
+            {
+                blockBlob.UploadFromStream(fs);
+            }
+        }
+
+        public void updateCSVFile(string path, List<KeyValuePair<int, MarkerPair>> markers)
+        {
+            List<string> lines = new List<string>();
+
+            if (File.Exists(path))
+            {
+                using (StreamReader reader = new StreamReader(path))
+                {
+                    string line;
+                    int row = -1;
+
+                    int GPSDateTime = 0;
+                    int NumSats = 1;
+                    int HDOP = 2;
+                    int Latitude = 3;
+                    int Longitude = 4;
+                    int Altitude = 5;
+                    int Speed = 6;
+                    int Heading = 7;
+                    int Marker = 8;
+                    int Value = 9;
+
+                    while ((line = reader.ReadLine()) != null)
+                    {
+                        if (row == -1)
+                        {
+                            lines.Add(line);
+                            row++;
+                            continue;
+                        }
+                        string[] fields = line.Split(',');
+                        fields[Marker] = "";
+                        fields[Value] = "";
+
+                        MarkerPair updatedMarker = new MarkerPair();
+                        foreach (KeyValuePair<int, MarkerPair> marker in markers)
+                        {
+                            if (marker.Key == row)
+                            {
+                                updatedMarker = marker.Value; //Extract MarkerPair
+                                markers.Remove(marker);
+                                break;
+                            }
+                        }
+                        if (updatedMarker != new MarkerPair())
+                        {
+                            // csvDataObj data = mapCsvRowToCsvDataObj(fields);
+                            fields[Marker] = updatedMarker.Marker;
+                            fields[Value] = updatedMarker.Value;
+                            //data.Marker = updatedMarker.Marker;
+                            //data.Value = updatedMarker.Value;
+                            //fields = mapCsvDataObjToCsvRow(data);
+                        }
+
+                        line = string.Join(",", fields);
+                        lines.Add(line);
+
+                        row++;
+                    }
+                }
+
+                using (StreamWriter writer = new StreamWriter(path, false))
+                {
+                    foreach (string line in lines)
+                        writer.WriteLine(line);
+                }
+            }
+        }
+
+        public csvDataObj mapCsvRowToCsvDataObj(string[] dataRow)
+        {
+            csvDataObj data = new csvDataObj();
+
+            try
+            {
+                data.GPSDateTime = System.DateTime.ParseExact(dataRow[0], "yyyy/MM/dd-HH:mm:ss:ff", CultureInfo.InvariantCulture);
+                data.NumStats = int.Parse(dataRow[1]);
+                data.HDOP = double.Parse(dataRow[2]);
+                data.Latitude = double.Parse(dataRow[3]);
+                data.Longitude = double.Parse(dataRow[4]);
+                data.Altitude = double.Parse(dataRow[5]);
+                data.Speed = double.Parse(dataRow[6]);
+                data.Heading = double.Parse(dataRow[7]);
+                data.Marker = dataRow[8];
+                data.Value = dataRow[9];
+            }
+            catch (Exception e)
+            {
+                return null;
+            }
+
+            return data;
+        }
+
+        public string[] mapCsvDataObjToCsvRow(csvDataObj data)
+        {
+            string[] dataRow = new string[9];
+
+            try
+            {
+                dataRow[0] = data.GPSDateTime.ToString("yyyy/MM/dd-HH:mm:ss:ff");
+                dataRow[1] = data.NumStats.ToString();
+                dataRow[2] = data.HDOP.ToString();
+                dataRow[3] = data.Latitude.ToString();
+                dataRow[4] = data.Longitude.ToString();
+                dataRow[5] = data.Altitude.ToString();
+                dataRow[6] = data.Speed.ToString();
+                dataRow[7] = data.Heading.ToString();
+                dataRow[8] = data.Marker.ToString();
+                dataRow[9] = data.Value.ToString();
+            }
+            catch (Exception e)
+            {
+                return null;
+            }
+
+            return dataRow;
+        }
+
+        protected void updatePathData_Click(object sender, EventArgs e)
+        {
+            List<KeyValuePair<int, MarkerPair>> markersList = getMarkersFromHTML();
+            updateCSVFile(Server.MapPath("~/Unzipped Files/data.csv"), markersList);
+            // uploadPathDataButton.Enabled = true;
+            uploadPathDataButton.Attributes.Remove("disabled");
+            uploadPathDataButton.Attributes["class"] = uploadPathDataButton.Attributes["class"].Replace("btnDisabled", "");
+            // uploadPathDataButton.BackColor = ColorTranslator.FromHtml("#FF8500");
+            // updatePathDataButton.Enabled = false;
+            // updatePathDataButton.Attributes["class"] = updatePathDataButton.Attributes["class"] + "btnDisabled";
+            // updatePathDataButton.BackColor = Color.Gray;
+
+            (int numLanes, List<int[]> laneStat, List<int[]> wpStat, int rpRow, int numRows) = createVisualizer();
+
+            List<string[]> markers = new List<string[]>();
+            markers.Add(new string[] {
+                    "0", "Data Log", "True"
+                });
+            markers.Add(new string[] {
+                    rpRow.ToString(), "RP", ""
+                });
+
+            Dictionary<int, string> laneStatDict = new Dictionary<int, string>
+                {
+                    {1, "LC"},
+                    {0, "LO"},
+                };
+
+            Dictionary<int, string> wpStatDict = new Dictionary<int, string>
+                {
+                    {0, "False"},
+                    {1, "True"},
+                };
+
+            int l = 1;
+            int w = 0;
+            bool laneStop = false;
+            bool wpStop = false;
+
+            int laneRow;
+            int wpRow;
+            // Really complicated way of organizing markers in order
+            while (!laneStop || !wpStop)
+            {
+                try { laneRow = laneStat[l][0]; }
+                catch { laneRow = 0; laneStop = true; }
+
+                try { wpRow = wpStat[w][0]; }
+                catch { wpRow = 0; wpStop = true; }
+
+                if (!laneStop && ((laneRow <= wpRow) || wpStop))
+                {
+                    markers.Add(new string[] {
+                            laneStat[l][0].ToString(), laneStatDict[laneStat[l][2]].ToString(), laneStat[l][1].ToString()
+                        });
+                    l++;
+                }
+                else if (!wpStop && ((wpRow <= laneRow) || laneStop))
+                {
+                    markers.Add(new string[] {
+                            wpStat[w][0].ToString(), "WP", wpStatDict[wpStat[w][1]].ToString()
+                        });
+                    w++;
+                };
+            }
+
+            markers.Add(new string[] {
+                    numRows.ToString(), "Data Log", "False"
+                });
+
+            loadMarkerTables(markers, numLanes);
+
+
+            loadGeoJsonVisAndShowContent();
+        }
+
+        public List<KeyValuePair<int, MarkerPair>> getMarkersFromHTML()
+        {
+            List<KeyValuePair<int, MarkerPair>> output = new List<KeyValuePair<int, MarkerPair>>();
+
+            string[] markersList = this.hiddenMarkers.Value.Split(';');
+            foreach (string row in markersList)
+            {
+                string[] markerRow = row.Split(',');
+                if (markerRow.Count() <= 2) continue;
+                MarkerPair marker = new MarkerPair
+                {
+                    Marker = markerRow[1],
+                    Value = markerRow[2]
+                };
+                output.Add(new KeyValuePair<int, MarkerPair>(int.Parse(markerRow[0]), marker));
+            }
+            return output;
+        }
+
+
+        protected void uploadPathData_Click(object sender, EventArgs e)
+        {
+            string cloudPathData = "path-data--" + this.HiddenWZID.Value + ".csv";
+            string container = "workzoneuploads";
+            string localPath = "~/Unzipped Files/data.csv";
+            uploadFile(container, cloudPathData, localPath);
+
+            this.hdnParam.Value = "Work zone edits saved and uploaded. Messages will be generated shortly (under 3 minutes)";
+            this.msgtype.Value = "Success";
+            Page.ClientScript.RegisterStartupScript(this.GetType(), "CallMyFunction", "showContent();", true);
+        }
+
         public void archivePublishedFiles(string id)
         {
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(ConfigurationManager.ConnectionStrings["StorageConnectionString"].ConnectionString);
@@ -357,15 +765,46 @@ namespace Neaera_Website_2018
             }
         }
 
-        protected void loadGeoJsonVis()
+        private void loadGeoJsonVis()
         {
-            string[] lines = File.ReadAllLines(Server.MapPath("~/Unzipped Files/wzdx.geojson"));
-            geojsonStringDiv.InnerHtml = "";
-            foreach (string line in lines)
-            {
-                geojsonStringDiv.InnerHtml += line;
-            }
+            //string[] lines = File.ReadAllLines(Server.MapPath("~/Unzipped Files/wzdx.geojson"));
+            //geojsonStringDiv.InnerHtml = "";
+            //foreach (string line in lines)
+            //{
+            //    geojsonStringDiv.InnerHtml += line;
+            //}
             Page.ClientScript.RegisterStartupScript(this.GetType(), "CallMyFunction", "loadGeoJson()", true);
+        }
+
+        private void loadGeoJsonVisAndShowContent()
+        {
+            //string[] lines = File.ReadAllLines(Server.MapPath("~/Unzipped Files/wzdx.geojson"));
+            //geojsonStringDiv.InnerHtml = "";
+            //foreach (string line in lines)
+            //{
+            //    geojsonStringDiv.InnerHtml += line;
+            //}
+
+            this.hdnParam.Value = "Work zone visualization successfully updated";
+            this.msgtype.Value = "Success";
+            Page.ClientScript.RegisterStartupScript(this.GetType(), "CallMyFunction", "loadGeoJsonAndShowContent()", true);
+        }
+
+        private void loadMarkerTables(List<string[]> markers, int numLanes)
+        {
+            int numRows = int.Parse(markers[markers.Count - 1][0]);
+            string outString = "";
+            outString += numLanes.ToString() + "," + numRows.ToString() + ";";
+            if (markers != null)
+            {
+                foreach (string[] marker in markers)
+                {
+                    outString += marker[0].ToString() + "," + marker[1].ToString() + "," + marker[2].ToString() + ";";
+                }
+            }
+            myHiddenoutputlist.Value = outString.TrimEnd(';');
+
+            //  Page.ClientScript.RegisterStartupScript(this.GetType(), "CallMyFunction", "fillTable();", true);
         }
 
         public void fillConfigurationFiles()
@@ -435,7 +874,7 @@ namespace Neaera_Website_2018
                     value.Add(values[9]);
                 }
             }
-            int sampleFreq = (int)Math.Round(GPSDateTime.Count * 1000 / (System.DateTime.ParseExact(GPSDateTime[GPSDateTime.Count - 1], "yyyy/MM/dd-HH:mm:ss:ff", CultureInfo.InvariantCulture) 
+            int sampleFreq = (int)Math.Round(GPSDateTime.Count * 1000 / (System.DateTime.ParseExact(GPSDateTime[GPSDateTime.Count - 1], "yyyy/MM/dd-HH:mm:ss:ff", CultureInfo.InvariantCulture)
                 - System.DateTime.ParseExact(GPSDateTime[0], "yyyy/MM/dd-HH:mm:ss:ff", CultureInfo.InvariantCulture)).TotalMilliseconds);
             for (int i = 0; i < GPSDateTime.Count(); i++)
             {
@@ -473,18 +912,15 @@ namespace Neaera_Website_2018
                     //if (value[i].ToUpper() == "FALSE") stat = "End";
                 }
 
-                if (marker[i] != "App Ended")
-                {
-                    pathPt.Insert(i, new double[] {
-                        Math.Round(vel[i], 4),
-                        Math.Round(lat[i], 8),
-                        Math.Round(lon[i], 8),
-                        Math.Round(elev[i], 2),
-                        Math.Round(head[i], 4)
-                    });
+                pathPt.Insert(i, new double[] {
+                    Math.Round(vel[i], 4),
+                    Math.Round(lat[i], 8),
+                    Math.Round(lon[i], 8),
+                    Math.Round(elev[i], 2),
+                    Math.Round(head[i], 4)
+                });
 
-                    if (refPtIdx != 0) wzLen += (vel[i] / sampleFreq);
-                }
+                if (refPtIdx != 0) wzLen += (vel[i] / sampleFreq);
             }
             double[] atRefPoint = new double[]
             {
@@ -509,6 +945,8 @@ namespace Neaera_Website_2018
             //    * Math.Cos(radians(lat2)) * Math.Sin(dlon / 2) * Math.Sin(dlon / 2);
             //double c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
             //double d = radius * c;
+            if (double.IsNaN(d))
+                d = 0;
             return d;
         }
         public double[] insertMapPt(List<double[]> pathPt, int index, int tLanes, double laneWidth, int dL, int[] lcwpStat, double distVec, int[] laneTaperStat)
@@ -662,7 +1100,7 @@ namespace Neaera_Website_2018
                                     else if (ln != 0 && ln != tLanes - 1)
                                     {
                                         bool leftLaneOpen = false;
-                                        if (lcwpStat[ln-1] == 0) leftLaneOpen = true;
+                                        if (lcwpStat[ln - 1] == 0) leftLaneOpen = true;
 
                                         bool rightLaneOpen = false;
                                         if (lcwpStat[ln + 1] == 0) rightLaneOpen = true;
@@ -787,7 +1225,7 @@ namespace Neaera_Website_2018
                 {
                     distFromLC += (pathPt[i - 1][0] * 3.28084) / dataFreq; //In feet
                 }
-            // Step 9
+                // Step 9
                 // Integrated into step 7
             }
             if (laneType == 1) wzMapLen[0] = totalDist;
@@ -1072,7 +1510,7 @@ namespace Neaera_Website_2018
             return nplList;
         }
 
-        public void createVisualizer()
+        public (int, List<int[]>, List<int[]>, int, int) createVisualizer()
         {
             var wzConfig = JsonConvert.DeserializeObject<configurationObject>(File.ReadAllText(Server.MapPath("~/Unzipped Files/config.json")));
 
@@ -1164,6 +1602,8 @@ namespace Neaera_Website_2018
                 //    build_jsvars (jsfile,"    var refPoint = ["str(refPoint[0])+","+str(refPoint[1])+","+str(refPoint[2])+"];")  //reference point
                 build_jsvars(jsfile, "    var refPoint = [" + refPtIdx.ToString() + "," + refPoint[0].ToString() + "," + refPoint[1].ToString() + "," + refPoint[2].ToString() + "];");  //reference point
                 build_jsvars(jsfile, "    var noLanes = " + laneStat[0][0].ToString() + ";");                    //no of lanes
+                build_jsvars(jsfile, "    var startMarkerLoc = [" + wzConfig.Location.BeginningLocation.Lat.ToString() + ", " + wzConfig.Location.BeginningLocation.Lon.ToString() + "];");                    //no of lanes
+                build_jsvars(jsfile, "    var endMarkerLoc = [" + wzConfig.Location.EndingLocation.Lat.ToString() + ", " + wzConfig.Location.EndingLocation.Lon.ToString() + "];");                    //no of lanes
                 build_jsvars(jsfile, "    var mappedLaneNo = " + dataLane.ToString() + ";");                     //data colleted lane
                 build_jsvars(jsfile, "    var laneStat = " + list2str(laneStat) + ";");                         //lane status
                 build_jsvars(jsfile, "    var laneWidth = " + laneWidth.ToString() + ";");                       //lane width
@@ -1203,6 +1643,7 @@ namespace Neaera_Website_2018
                                "//   heading + WP flag + distVec (dist from prev. node) \n" +
                                "//\n    var wzMapData = [");
             }
+            return (laneStat[0][0], laneStat, wpStat, refPtIdx, pathPt.Count() - 1);
         }
 
         public string list2str(List<int[]> list)

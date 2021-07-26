@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Globalization;
@@ -7,7 +7,7 @@ using System.Linq;
 using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
-using Microsoft.Azure; // Namespace for Azure Configuration Manager
+// using Microsoft.Azure; // Namespace for Azure Configuration Manager
 using Newtonsoft.Json;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -250,7 +250,7 @@ namespace Neaera_Website_2018
         public void fill_lanetypes()
         {
             this.ddLaneTypes.Items.Clear();
-            this.ddLaneTypes.Items.Add("None");
+            // this.ddLaneTypes.Items.Add("None");
             //foreach (LANETYPES r in Enum.GetValues(typeof(LANETYPES)))
             //{
             //    ListItem item = new ListItem(Enum.GetName(typeof(LANETYPES), r), r.ToString());
@@ -724,7 +724,7 @@ namespace Neaera_Website_2018
 
             jsonConfig.metadata = new METADATA();
             jsonConfig.metadata.lrs_type = this.txtIrsType.Text.ToString();
-            jsonConfig.metadata.datafeed_frequency_update = this.txtDataFeedFrequencyMethod.Text.ToString();
+            jsonConfig.metadata.datafeed_frequency_update = getNullableInt(this.txtDataFeedFrequencyMethod.Text);
             jsonConfig.metadata.location_verify_method = this.txtLocationVerifyMethod.Text.ToString();
             foreach (ListItem item in this.ck_WZLocationmethod.Items) if ((item.Selected)) jsonConfig.metadata.wz_location_method = (WZ_LOCATION_METHODS)System.Enum.Parse(typeof(WZ_LOCATION_METHODS), item.Value.ToString().ToLower());
             jsonConfig.metadata.timestamp_metadata_update = System.DateTime.Now.ToUniversalTime().ToString("yyyy-MM-ddThh:mm:ssZ");
@@ -733,6 +733,14 @@ namespace Neaera_Website_2018
             jsonConfig.metadata.issuing_organization = txtIssuingOrganization.Text;
             updateTableStrings(jsonConfig);
         }
+
+        public int? getNullableInt(string s)
+        {
+            int i;
+            if (int.TryParse(s, out i)) return i;
+            return null;
+        }
+
 
         public (int, Coordinate, List<Marker>, string, int, int, string, string) getImageString(double startLat, double startLon, double endLat, double endLon)
         {
@@ -755,8 +763,8 @@ namespace Neaera_Website_2018
             markers.Add(endMarker);
 
             List<string> marker_list = new List<string>();
-            marker_list.Add("markers=color:" + startMarker.Color.ToString().ToLower() + "|label:" + startMarker.Name + "|" + startMarker.Location.Lat.ToString() + "," + startMarker.Location.Lon.ToString() + "|"); // blue S at several zip code's centers
-            marker_list.Add("markers=color:" + endMarker.Color.ToString().ToLower() + "|label:" + endMarker.Name + "|" + endMarker.Location.Lat.ToString() + "," + endMarker.Location.Lon.ToString() + "|"); // blue S at several zip code's centers
+            marker_list.Add("markers=color:" + startMarker.Color.ToString().ToLower().Substring(7, startMarker.Color.ToString().Length - 8) + "|label:" + startMarker.Name + "|" + startMarker.Location.Lat.ToString() + "," + startMarker.Location.Lon.ToString() + "|"); // blue S at several zip code's centers
+            marker_list.Add("markers=color:" + endMarker.Color.ToString().ToLower().Substring(7, endMarker.Color.ToString().Length - 8) + "|label:" + endMarker.Name + "|" + endMarker.Location.Lat.ToString() + "," + endMarker.Location.Lon.ToString() + "|"); // blue S at several zip code's centers
 
             string imageFormat = "png";
             string mapType = "roadmap";
@@ -795,7 +803,9 @@ namespace Neaera_Website_2018
             {
                 foreach (Marker marker in imageInfo.Markers)
                 {
-                    string markerString = "markers=color:" + marker.Color.ToString().ToLower() + "|label:" + marker.Name + "|" + marker.Location.Lat.ToString() + "," + marker.Location.Lon.ToString() + "|";
+                    string colorString = marker.Color.ToString().ToLower();
+                    string color = colorString.Substring(7, colorString.Length - 8);
+                    string markerString = "markers=color:" + color + "|label:" + marker.Name + "|" + marker.Location.Lat.ToString() + "," + marker.Location.Lon.ToString() + "|";
                     request += String.Format("{0}&", markerString);
                 }
             }
@@ -1076,6 +1086,7 @@ namespace Neaera_Website_2018
             
 
         }
+
         public void SaveConfigFile()
         {
             try
@@ -1098,7 +1109,7 @@ namespace Neaera_Website_2018
             }
             catch (System.Exception ex)
             {
-                this.hdnParam.Value = "There was an error saving you configuration file.  Information has NOT been saved." + ex.Message.ToString();
+                this.hdnParam.Value = "There was an error saving your configuration file.  Information has NOT been saved." + ex.Message.ToString();
                 this.msgtype.Value = "Error";
                 Page.ClientScript.RegisterStartupScript(this.GetType(), "CallMyFunction", "showContent();", true);
                 this.btnDownloadFile.Enabled = false;
@@ -1110,7 +1121,6 @@ namespace Neaera_Website_2018
             }
         }
 
-        
         protected void btnSave_Click1(object sender, EventArgs e)
         {
             string test = this.myHiddenoutputlist.Value.ToString();
@@ -1137,10 +1147,6 @@ namespace Neaera_Website_2018
         {
             try
             {
-                this.hdnParam.Value = "Your file has been successfully downloaded.";
-                this.msgtype.Value = "Success";
-                Page.ClientScript.RegisterStartupScript(this.GetType(), "CallMyFunction", "showContent();", true);
-
                 //downloadlocal config, not one selected in a list
                 string selectedfile = "";
                 string selectedfile_type = "";
@@ -1149,9 +1155,9 @@ namespace Neaera_Website_2018
                     selectedfile = this.txtFilepath_configSave.Text.ToString();
                     //Check in Inprogress and published
                     selectedfile_type= checkFolder(selectedfile);
-                    if (selectedfile_type == "inprogressconfigfiles")
+                    if (Typeofconfig == "InProgress")// selectedfile_type == "inprogressconfigfiles")
                         downloadlocal(selectedfile, "inprogressconfigfiles");
-                    else if (selectedfile_type == "publishedconfigfiles")
+                    else if (Typeofconfig == "Published")// selectedfile_type == "publishedconfigfiles")
                         downloadlocal(selectedfile, "publishedconfigfiles");
                     else
                     {
@@ -1161,7 +1167,6 @@ namespace Neaera_Website_2018
                         return;
                     }
                 }
-
                 else
                 {
 
@@ -1171,13 +1176,17 @@ namespace Neaera_Website_2018
                     return;
                 }
 
+                this.hdnParam.Value = "Your file has been successfully downloaded.";
+                this.msgtype.Value = "Success";
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "CallMyFunction", "showContent();", true);
+
 
                 //if (this.listConfigurationFiles.SelectedIndex != -1)
                 //{
                 //    selectedfile = this.listConfigurationFiles.SelectedValue.ToString();
                 //    downloadlocal(selectedfile, "inprogressconfigfiles");
                 //}
-                //else if (this.listPublishedConfigurationFiles.SelectedIndex != -1)
+                //else if (this.listPublishedConfigurationFiles.SelectedIndex != -1).
                 //{
                 //    selectedfile = this.listPublishedConfigurationFiles.SelectedValue.ToString();
                 //    downloadlocal(selectedfile, "publishedconfigfiles");
@@ -1191,7 +1200,7 @@ namespace Neaera_Website_2018
                 //        downloadlocal(selectedfile, "publishedconfigfiles");
                 //    else
                 //    {
-                        
+
                 //        this.hdnParam.Value = "Please select a file to download from the list of published or unpublished files.";
                 //        this.msgtype.Value = "Error";
                 //        Page.ClientScript.RegisterStartupScript(this.GetType(), "CallMyFunction", "showContent();", true);
@@ -1235,7 +1244,6 @@ namespace Neaera_Website_2018
                     fs.Flush();
                 }
             }
-
         }
         public string checkFolder(string filename)
         {
@@ -1248,9 +1256,9 @@ namespace Neaera_Website_2018
             if (data_file.Exists())
                 return "inprogressconfigfiles";
             container = blobClient.GetContainerReference("publishedconfigfiles");
+            data_file = container.GetBlockBlobReference(filename);
             if (data_file.Exists())
                 return "publishedconfigfiles";
-
             return "";
         }
         public void downloadlocal(string filename, string Bloblname)

@@ -1,4 +1,4 @@
-<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="V2x_Home.aspx.cs" Inherits="Neaera_Website_2018.V2x_Home" %>
+﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="V2x_Home.aspx.cs" Inherits="Neaera_Website_2018.V2x_Home" %>
 
 <!DOCTYPE html>
 
@@ -78,12 +78,12 @@
         </div> <!-- /.grid-col -->
        <div class="grid-col-12 tablet:grid-col-4" style="width: 25%; min-width: 250px; margin-top: 20px">
           <a class="link-box" href="V2X_Verification.aspx">
-            <h3>Verification and Visualization</h3>
+            <h3>Verification, Visualization and Work Zone Editing</h3>
             <div class="smallIconContainer margin-x-auto">
               <%--<img src="images/svgs/SDC_Icon_Get_Started.svg" alt="">--%>
             </div>
             <p>
-              Verify and Visualize Work Zone Data
+              Verify, Visualize and Editing Work Zone Data
             </p>
           </a>
         </div> <!-- /.grid-col -->

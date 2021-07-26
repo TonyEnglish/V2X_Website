@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System;
 using System.ComponentModel;
 using Newtonsoft.Json;
@@ -78,7 +78,7 @@ namespace Neaera_Website_2018
         public WZ_LOCATION_METHODS? wz_location_method { get; set; }
         public string lrs_type { get; set; }
         public string location_verify_method { get; set; }
-        public string datafeed_frequency_update { get; set; }
+        public int? datafeed_frequency_update { get; set; }
         public string timestamp_metadata_update { get; set; }
         public string contact_name { get; set; }
         public string contact_email { get; set; }
@@ -122,18 +122,18 @@ namespace Neaera_Website_2018
     public class SCHEDULE
     {
         public string StartDate { get; set; }
-        public STARTDATEACCURACY? StartDateAccuracy { get; set; }
+        public STARTDATEACCURACY StartDateAccuracy { get; set; }
         public string EndDate { get; set; }
-        public ENDDATEACCURACY? EndDateAccuracy { get; set; }
+        public ENDDATEACCURACY EndDateAccuracy { get; set; }
         public List<string> DaysOfWeek { get; set; }
     }
 
     public class LOCATION
     {
         public Coordinate BeginningLocation { get; set; }
-        public BEGINNINGACCURACY? BeginningAccuracy { get; set; }
+        public BEGINNINGACCURACY BeginningAccuracy { get; set; }
         public Coordinate EndingLocation { get; set; }
-        public ENDINGACCURACY? EndingAccuracy { get; set; }
+        public ENDINGACCURACY EndingAccuracy { get; set; }
     }
 
     public class Coordinate
@@ -233,24 +233,25 @@ namespace Neaera_Website_2018
     [JsonConverter(typeof(CustomStringEnumConverter))]
     public enum LANETYPES
     {
-        [Description("all-roadways")] allroadways,
-        [Description("through-lanes")] throughlanes,
         [Description("left-lane")] leftlane,
         [Description("right-lane")] rightlane,
         [Description("center-lane")] centerlane,
         [Description("middle-lane")] middlelane,
-        [Description("middle-two-lanes")] middletwolanes,
-        [Description("right-turning-lanes")] rightturninglanes,
-        [Description("left-turing-lanes")] leftturinglanes,
-        [Description("right-exit-lanes")] rightexitlanes,
-        [Description("left-exit-lanes")] leftexitlanes,
-        [Description("right-mergining-lanes")] rightmergininglanes,
-        [Description("left-merging-lanes")] leftmerginglanes,
+        [Description("right-turning-lane")] rightturninglane,
+        [Description("left-turning-lane")] leftturninglane,
+        [Description("right-exit-lane")] rightexitlane,
+        [Description("left-exit-lane")] leftexitlane,
+        [Description("right-mergining-lane")] rightmergininglane,
+        [Description("left-merging-lane")] leftmerginglane,
         [Description("right-exit-ramp")] rightexitramp,
         [Description("sidewalk")] sidewalk,
         [Description("bike-lane")] bikelane,
-        [Description("right-shoulder-outside")] rightshoulderoutside,
+        [Description("right-shoulder")] rightshoulder,
         [Description("left-shoulder")] leftshoulder
+        /* REMOVED 3/16/21 Because RSM failed to load
+         * [Description("all-roadways")] allroadways
+        [Description("through-lanes")] throughlanes,
+        [Description("middle-two-lanes")] middletwolanes,*/
     }
     [JsonConverter(typeof(CustomStringEnumConverter))]
     public enum RESTRICTIONUNITS 

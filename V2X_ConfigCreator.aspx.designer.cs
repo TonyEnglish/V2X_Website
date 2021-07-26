@@ -510,6 +510,15 @@ namespace Neaera_Website_2018
         protected global::System.Web.UI.WebControls.DropDownList ddRestrictionUnits;
 
         /// <summary>
+        /// ddNumberofLanes control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.DropDownList ddNumberofLanes;
+
+        /// <summary>
         /// P2 control.
         /// </summary>
         /// <remarks>
@@ -618,6 +627,15 @@ namespace Neaera_Website_2018
         protected global::System.Web.UI.HtmlControls.HtmlInputHidden msgtype;
 
         /// <summary>
+        /// hidden_confirmoverwrite control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlInputHidden hidden_confirmoverwrite;
+
+        /// <summary>
         /// btnSave control.
         /// </summary>
         /// <remarks>
@@ -625,6 +643,15 @@ namespace Neaera_Website_2018
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Button btnSave;
+
+        /// <summary>
+        /// btnSaveConfirm control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Button btnSaveConfirm;
 
         /// <summary>
         /// btnPublishFile control.

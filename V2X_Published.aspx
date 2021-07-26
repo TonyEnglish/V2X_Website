@@ -1,4 +1,4 @@
-<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="V2X_Published.aspx.cs" Inherits="Neaera_Website_2018.V2X_Published" %>
+﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="V2X_Published.aspx.cs" Inherits="Neaera_Website_2018.V2X_Published" %>
 
 <!DOCTYPE html>
 
@@ -45,6 +45,10 @@
 
         .downloadChoice {
             margin-top: 10px;
+        }
+
+        .btnDisabled {
+            background: grey !important;
         }
 
         #info-box {
@@ -212,6 +216,7 @@
                         </div>
                         <br />
                         <asp:Button ID="DownloadButton" class="downloadChoice" runat="server" ClientIDMode="Static" Text="Download Work Zone Data" OnClick="DownloadButton_Click" /><br />
+                         <asp:Button ID="DeletePublishWZButton" class="downloadChoice btnDisabled" runat="server" ClientIDMode="Static" Text="Delete Published Work Zone Data" OnClick="DeletePublishWZButton_Click" OnClientClick="return confirm('Are you sure you want to DELETE this published this work zone? This cannot be undone')" disabled/><br />
                     </div>
                     <input type="hidden" id="hdnParam" runat="server" clientidmode="Static" value="This is my message" />
                     <input type="hidden" id="msgtype" runat="server" clientidmode="Static" />

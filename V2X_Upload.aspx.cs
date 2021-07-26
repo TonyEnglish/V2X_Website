@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Globalization;
@@ -11,7 +11,7 @@ using System.Web.Hosting;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 using Ionic.Zip;
-using Microsoft.Azure; // Namespace for Azure Configuration Manager
+// using Microsoft.Azure; // Namespace for Azure Configuration Manager
 //using Microsoft.Azure.Storage; // Namespace for Storage Client Library
 //using Microsoft.Azure.Storage.File; // Namespace for Azure Files
 using Microsoft.WindowsAzure.Storage;

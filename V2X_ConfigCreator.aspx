@@ -1,4 +1,4 @@
-<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="V2X_ConfigCreator.aspx.cs" Inherits="Neaera_Website_2018.V2X_ConfigCreator" %>
+﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="V2X_ConfigCreator.aspx.cs" Inherits="Neaera_Website_2018.V2X_ConfigCreator" %>
 
 <!DOCTYPE html>
 
@@ -354,11 +354,11 @@
                                 <asp:Label ID="lbl_filesave" runat="server" Text="File Name (auto generated - WZ description + Road Name.json) : " CssClass="input-field"></asp:Label>
                                 <asp:TextBox ID="txtFilepath_configSave" runat="server" Text="" Width="400px"></asp:TextBox>
                             </div>
-                            <div class="form-style-2-heading">Import a configuration file</div>
+                            <div class="form-style-2-heading" style="margin-top: 30px">Import a configuration file</div>
                             <div class="row">
                                 <div class="column">
                                     Select an existing configuration file:
-                                       <asp:ListBox ID="listConfigurationFiles" runat="server" Style="width: 75%; margin-top: 5px; height: 400px; margin-left: 10px;" OnSelectedIndexChanged="listConfigurationFiles_SelectedIndexChanged"></asp:ListBox>
+                                       <asp:ListBox ID="listConfigurationFiles" runat="server" Style="width: 75%; margin-top: 5px; height: 350px; margin-left: 10px;" AutoPostBack="true" OnSelectedIndexChanged="listConfigurationFiles_SelectedIndexChanged"></asp:ListBox>
                                 </div>
                                 <div class="column" style="width: 15% !important;">
                                     <div class="row">
@@ -370,7 +370,7 @@
                                 </div>
                                 <div class="column">
                                     <asp:Label Text="Select a published configuration file:" runat="server" Style="padding-bottom: 5%">  </asp:Label>
-                                    <asp:ListBox ID="listPublishedConfigurationFiles" runat="server" Style="margin-top: 5px; height: 400px; width: 75%;" OnSelectedIndexChanged="listPublishedConfigurationFiles_SelectedIndexChanged"></asp:ListBox>
+                                    <asp:ListBox ID="listPublishedConfigurationFiles" runat="server" Style="margin-top: 5px; height: 350px; width: 75%;" AutoPostBack="true" OnSelectedIndexChanged="listPublishedConfigurationFiles_SelectedIndexChanged"></asp:ListBox>
                                 </div>
                             </div>
                             <div class="navBtnContianer">
@@ -595,28 +595,28 @@
                                         <div class="column_tab2_narrow">
                                             <label for="field1"><span style="padding-bottom: 10px; margin-left: -20px;">Beginning Accuracy</span></label>
                                             <asp:CheckBoxList ID="chkBeginningAccuracy" runat="server" RepeatDirection="Vertical" TextAlign="Right" CellSpacing="20" Width="500" RepeatLayout="Table" CssClass="checkboxlist_nowrap">
-                                                <asp:ListItem onclick="MutExChkList(this);" Selected="False">Estimated</asp:ListItem>
+                                                <asp:ListItem onclick="MutExChkList(this);" Selected="True">Estimated</asp:ListItem>
                                                 <asp:ListItem onclick="MutExChkList(this);" Selected="False">Verified</asp:ListItem>
                                             </asp:CheckBoxList>
                                         </div>
                                         <div class="column_tab3">
                                             <label for="field1"><span style="padding-bottom: 10px; margin-left: -20px;">Ending Accuracy</span></label>
                                             <asp:CheckBoxList ID="chkEndingAccuracy" runat="server" RepeatDirection="Vertical" TextAlign="Right" CellSpacing="20" Width="500" RepeatLayout="Table" CssClass="checkboxlist_nowrap">
-                                                <asp:ListItem onclick="MutExChkList(this);" Selected="False">Estimated</asp:ListItem>
+                                                <asp:ListItem onclick="MutExChkList(this);" Selected="True">Estimated</asp:ListItem>
                                                 <asp:ListItem onclick="MutExChkList(this);" Selected="False">Verified</asp:ListItem>
                                             </asp:CheckBoxList>
                                         </div>
                                         <div class="column_tab3">
                                             <label for="field1"><span style="padding-bottom: 10px; margin-left: -20px;">Start Date Accuracy</span></label>
                                             <asp:CheckBoxList ID="chkStartDateAccuracy" runat="server" RepeatDirection="Vertical" TextAlign="Right" CellSpacing="20" Width="500" RepeatLayout="Table" CssClass="checkboxlist_nowrap">
-                                                <asp:ListItem onclick="MutExChkList(this);" Selected="False">Estimated</asp:ListItem>
+                                                <asp:ListItem onclick="MutExChkList(this);" Selected="True">Estimated</asp:ListItem>
                                                 <asp:ListItem onclick="MutExChkList(this);" Selected="False">Verified</asp:ListItem>
                                             </asp:CheckBoxList>
                                         </div>
                                         <div class="column_tab3">
                                             <label for="field1"><span style="padding-bottom: 10px; margin-left: -20px;">End Date Accuracy</span></label>
                                             <asp:CheckBoxList ID="chkEndDateAccuracy" runat="server" RepeatDirection="Vertical" TextAlign="Right" CellSpacing="20" RepeatLayout="Table" CssClass="checkboxlist_nowrap">
-                                                <asp:ListItem onclick="MutExChkList(this);" Selected="False">Estimated</asp:ListItem>
+                                                <asp:ListItem onclick="MutExChkList(this);" Selected="True">Estimated</asp:ListItem>
                                                 <asp:ListItem onclick="MutExChkList(this);" Selected="False">Verified</asp:ListItem>
                                             </asp:CheckBoxList>
                                         </div>
@@ -724,7 +724,7 @@
                                         <div>
                                             <div class="column">
                                                 <div class="form-style-2-heading" style="margin-top: 15px; margin-left: -10%; width: 500px;">Metadata</div>
-                                                <label for="field1"><span>Issuing organization</span><asp:TextBox class="input-field" ID="txtIssuingOrganization" MaxLength="500" Text="" runat="server" Width="700px" /></label>
+                                                <label for="field1"><span>Issuing Organization<span class="required">*</span></span><asp:TextBox class="input-field" ID="txtIssuingOrganization" MaxLength="500" Text="" runat="server" Width="700px" /></label>
                                                 <label for="field1">
                                                     <span>WZ Location Method</span></label>
                                                 <div class="column_tab2">
@@ -736,11 +736,11 @@
                                                         <asp:ListItem onclick="MutExChkList(this);" Value="other" Selected="False">other</asp:ListItem>
                                                     </asp:CheckBoxList>
                                                 </div>
-                                                <label for="field1"><span>Lrs Type</span><asp:TextBox class="input-field" ID="txtIrsType" MaxLength="500" Text="" runat="server" Width="700px" /></label>
+                                                <label for="field1"><span>Linear Referencing Type</span><asp:TextBox class="input-field" ID="txtIrsType" MaxLength="500" Text="" runat="server" Width="700px" /></label>
                                                 <label for="field1"><span>Location Verify Method</span><asp:TextBox class="input-field" ID="txtLocationVerifyMethod" MaxLength="500" Text="" runat="server" Width="700px" /></label>
-                                                <label for="field1"><span>Data Feed Frequency Update</span><asp:TextBox class="input-field" ID="txtDataFeedFrequencyMethod" MaxLength="500" Text="" runat="server" Width="700px" /></label>
-                                                 <label for="field1"><span>Contact Name</span><asp:TextBox class="input-field" ID="txtContactName" MaxLength="500" Text="" runat="server" Width="700px" /></label>
-                                                 <label for="field1"><span>Contact Email</span><asp:TextBox class="input-field" ID="txtContactEmail" MaxLength="500" Text="" runat="server" Width="700px" /></label>
+                                                <label for="field1"><span style="width: 250px">Data Feed Update Frequency (s)</span><asp:TextBox class="input-field" ID="txtDataFeedFrequencyMethod" MaxLength="500" Text="" runat="server" Width="700px" onkeypress="return isNumberKey(event)"/></label>
+                                                <label for="field1"><span>Contact Name<span class="required">*</span></span><asp:TextBox class="input-field" ID="txtContactName" MaxLength="500" Text="" runat="server" Width="700px" /></label>
+                                                <label for="field1"><span>Contact Email<span class="required">*</span></span><asp:TextBox class="input-field" ID="txtContactEmail" MaxLength="500" Text="" runat="server" Width="700px" /></label>
                                             </div>
                                         </div>
 
@@ -789,6 +789,13 @@
                         index = parseInt(index) + 1;
                     }
                     $('.nav-tabs a[data_id="' + index + '"]').tab('show');
+                }
+
+                function isNumberKey(evt) {
+                    var charCode = (evt.which) ? evt.which : evt.keyCode;
+                    if (charCode > 31 && (charCode < 48 || charCode > 57))
+                        return false;
+                    return true;
                 }
             </script>
             <%--************END files for tab control and forward and back buttons **********************************--%>

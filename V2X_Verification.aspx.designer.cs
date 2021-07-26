@@ -33,6 +33,33 @@ namespace Neaera_Website_2018
         protected global::System.Web.UI.WebControls.ListBox listConfigurationFiles;
 
         /// <summary>
+        /// myHiddenoutputlist control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField myHiddenoutputlist;
+
+        /// <summary>
+        /// hiddenMarkers control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField hiddenMarkers;
+
+        /// <summary>
+        /// HiddenWZID control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HiddenWZID;
+
+        /// <summary>
         /// VisualizeButton control.
         /// </summary>
         /// <remarks>
@@ -69,12 +96,30 @@ namespace Neaera_Website_2018
         protected global::System.Web.UI.HtmlControls.HtmlInputHidden msgtype;
 
         /// <summary>
-        /// geojsonStringDiv control.
+        /// updatePathDataButton control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.HtmlControls.HtmlGenericControl geojsonStringDiv;
+        protected global::System.Web.UI.WebControls.Button updatePathDataButton;
+
+        /// <summary>
+        /// uploadPathDataButton control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Button uploadPathDataButton;
+
+        /// <summary>
+        /// HiddenField1 control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HiddenField1;
     }
 }
